@@ -3,15 +3,18 @@
 }
 
 body, html {
-    height: 100%;
+    min-height: 100%; /* Changed from height: 100% to allow scrolling expansion */
     margin: 0;
     overflow-x: hidden;
     font-family: 'Quicksand', sans-serif;
     color: white;
     transition: background var(--transition-speed) ease;
-    background: linear-gradient(to bottom, #1a2f2b, #2f5a54);
 
-    /* New additions: */
+    /* BACKGROUND FIXES */
+    background: linear-gradient(to bottom, #1a2f2b, #2f5a54);
+    background-attachment: fixed; /* This pins the gradient so it never reveals white bars */
+
+    /* Touch fixes */
     overscroll-behavior-y: none;
     -webkit-overflow-scrolling: touch;
 }
@@ -34,10 +37,19 @@ body.theme-day.weather-clear { background: linear-gradient(to bottom, #4a3b2a, #
 }
 
 .weather-container {
-    position: relative; z-index: 3;
+    position: relative;
+    z-index: 3;
     min-height: 100vh;
-    display: flex; flex-direction: column; justify-content: center; align-items: center;
-    padding-top: 2rem; padding-bottom: 2rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+
+    /* Padding Top */
+    padding-top: 2rem;
+
+    /* Padding Bottom: 2rem + extra space for iPhone Safe Area */
+    padding-bottom: calc(2rem + env(safe-area-inset-bottom));
 }
 
 /* --- UI COMPONENTS --- */
