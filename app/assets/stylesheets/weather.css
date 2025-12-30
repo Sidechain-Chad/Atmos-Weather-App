@@ -97,7 +97,19 @@ body.theme-day.weather-clear { background: linear-gradient(to bottom, #4a3b2a, #
     -webkit-mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
 }
 .hourly-container::-webkit-scrollbar { display: none; }
-.hourly-container:active { cursor: grabbing; }
+/* While dragging (Active State) */
+.hourly-container.active {
+    cursor: grabbing;
+    cursor: -webkit-grabbing;
+
+    /* CRITICAL: Disables smooth interpolation while dragging.
+       This makes the drag feel 1:1 responsive with your mouse. */
+    scroll-behavior: auto !important;
+
+    /* Optional: subtle scale to show interaction */
+    transform: scale(1.005);
+    transition: transform 0.2s;
+}
 
 .hour-item {
     min-width: 65px;
@@ -108,23 +120,59 @@ body.theme-day.weather-clear { background: linear-gradient(to bottom, #4a3b2a, #
     transition: all 0.2s ease;
 }
 
-.hour-item:hover { opacity: 1; transform: translateY(-2px); }
+/* .hour-item:hover { opacity: 1; transform: translateY(-2px); } */
+.hour-item:hover { opacity: 1; }
 
 .hour-time { font-size: 0.85rem; font-weight: 500; opacity: 0.7; }
 .hour-icon { font-size: 1.8rem; margin: 5px 0; filter: drop-shadow(0 0 5px rgba(255,255,255,0.3)); }
 .hour-temp { font-weight: 600; font-size: 1.1rem; }
 
 /* Clean "Now" Highlight (No Glass) */
+/* --- Special "Now" Highlight (Glow & Scale) --- */
+
 .hour-item.now {
     opacity: 1;
-    background: transparent; /* Simple highlight */
-    transform: scale(1.05); /* Slight size increase */
-
+    background: transparent;
+    transform: scale(1.15); /* Default "Now" size */
+    z-index: 5;
+    margin: 0 5px;
+    transition: transform 0.3s ease, opacity 0.3s;
 }
-.hour-item.now .hour-time {
+
+/* Fix: Ensure hover lifts it slightly HIGHER than the 1.15 base */
+.hour-item.now:hover {
     opacity: 1;
+    transform: scale(1.2) translateY(-2px);
+}
+
+/* 1. Make the "Now" text glow white */
+.hour-item.now .hour-time {
     color: #fff;
+    opacity: 1;
+    font-weight: 800;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 1px;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.6);
+}
+
+/* 2. Make the Icon shine and pulse slightly */
+.hour-item.now .hour-icon {
+    transform: scale(1.1);
+    filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.5));
+    animation: now-pulse 3s infinite ease-in-out;
+}
+
+/* 3. Bold the temperature */
+.hour-item.now .hour-temp {
     font-weight: 700;
+    text-shadow: 0 2px 5px rgba(0,0,0,0.3);
+}
+
+/* Pulse Animation */
+@keyframes now-pulse {
+    0%, 100% { filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.4)); }
+    50% { filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.8)); }
 }
 
 /* --- Summary Grid --- */

@@ -384,4 +384,63 @@ export default class extends Controller {
     hideError() {
         this.errorAlertTarget.style.display = 'none';
     }
+
+    initDragScroll() {
+    const slider = this.hourlyContainerTarget;
+    let isDown = false;
+    let startX;
+    let scrollLeft;
+    let velX = 0; // Velocity X
+    let momentumID;
+
+    slider.addEventListener('mousedown', (e) => {
+      isDown = true;
+      slider.classList.add('active');
+      startX = e.pageX - slider.offsetLeft;
+      scrollLeft = slider.scrollLeft;
+      cancelAnimationFrame(momentumID); // Stop any current glide
+    });
+
+    slider.addEventListener('mouseleave', () => {
+      isDown = false;
+      slider.classList.remove('active');
+    });
+
+    slider.addEventListener('mouseup', () => {
+      isDown = false;
+      slider.classList.remove('active');
+      this.beginMomentum(slider, velX); // Start gliding on release
+    });
+
+    slider.addEventListener('mousemove', (e) => {
+        if (!isDown) return;
+        e.preventDefault();
+
+        const x = e.pageX - slider.offsetLeft;
+        // CHANGED: Reduced from 2 to 1.5 for a tighter, smoother feel
+        const walk = (x - startX) * 1.5;
+
+        const prevScrollLeft = slider.scrollLeft;
+        slider.scrollLeft = scrollLeft - walk;
+
+        velX = slider.scrollLeft - prevScrollLeft;
+      });
+  }
+
+  // Update in beginMomentum
+    beginMomentum(slider, velocity) {
+      // CHANGED: Reduced from 0.95 to 0.92 for a "heavier" premium stop
+      const decay = 0.92;
+
+      const step = () => {
+        if (Math.abs(velocity) < 0.5) return;
+
+        velocity *= decay;
+        slider.scrollLeft += velocity;
+
+        requestAnimationFrame(step);
+      };
+
+      requestAnimationFrame(step);
+    }
 }
