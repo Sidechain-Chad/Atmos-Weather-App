@@ -130,40 +130,29 @@ body.theme-day.weather-clear { background: linear-gradient(to bottom, #4a3b2a, #
 /* Clean "Now" Highlight (No Glass) */
 /* --- Special "Now" Highlight (Glow & Scale) --- */
 
+/* Clean "Now" Highlight */
 .hour-item.now {
     opacity: 1;
     background: transparent;
-    transform: scale(1.15); /* Default "Now" size */
+    transform: scale(1.15); /* Make it bigger */
     z-index: 5;
     margin: 0 5px;
-    transition: transform 0.3s ease, opacity 0.3s;
+    transition: transform 0.3s ease;
 }
 
-/* Fix: Ensure hover lifts it slightly HIGHER than the 1.15 base */
+/* Ensure hover lifts it slightly higher than the base scale */
 .hour-item.now:hover {
-    opacity: 1;
     transform: scale(1.2) translateY(-2px);
 }
 
-/* 1. Make the "Now" text glow white */
+/* Make the text Glow so it is visible without a box */
 .hour-item.now .hour-time {
-    color: #fff;
     opacity: 1;
+    color: #fff;
     font-weight: 800;
-    text-transform: uppercase;
-    font-size: 0.75rem;
-    letter-spacing: 1px;
-    text-shadow: 0 0 10px rgba(255, 255, 255, 0.6);
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.6); /* The Glow */
 }
 
-/* 2. Make the Icon shine and pulse slightly */
-.hour-item.now .hour-icon {
-    transform: scale(1.1);
-    filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.5));
-    animation: now-pulse 3s infinite ease-in-out;
-}
-
-/* 3. Bold the temperature */
 .hour-item.now .hour-temp {
     font-weight: 700;
     text-shadow: 0 2px 5px rgba(0,0,0,0.3);
@@ -195,10 +184,10 @@ body.theme-day.weather-clear { background: linear-gradient(to bottom, #4a3b2a, #
 
 .details-wrapper {
     max-height: 0; overflow: hidden;
-    transition: max-height 1.0s cubic-bezier(0, 1, 0, 1);
+    transition: max-height 1.6s cubic-bezier(0, 1, 0, 1);
 }
 .details-wrapper.open {
-    max-height: 1000px; transition: max-height 1.0s ease-in-out;
+    max-height: 1000px; transition: max-height 1.2s ease-in-out;
 }
 
 .detailed-grid {
