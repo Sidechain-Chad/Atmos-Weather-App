@@ -1,0 +1,127 @@
+<div data-controller="weather">
+
+  <div id="canvas-container">
+      <canvas data-weather-target="canvas"></canvas>
+  </div>
+
+  <div class="overlay"></div>
+
+  <div id="errorAlert" data-weather-target="errorAlert" class="alert alert-danger position-fixed top-0 start-50 translate-middle-x mt-4 shadow-sm" role="alert">
+      <i class="ph ph-warning-circle me-2"></i> <span data-weather-target="errorMsg">Something went wrong</span>
+  </div>
+
+  <div class="container weather-container">
+      <div class="glass-panel text-center">
+
+          <form data-action="submit->weather#search" class="search-box">
+              <input type="text" data-weather-target="cityInput" class="form-control" placeholder="City name..." value="Cape Town">
+              <span class="loader" data-weather-target="spinner"></span>
+          </form>
+
+          <div data-weather-target="result" style="opacity: 0; transition: opacity 0.8s;">
+              <div class="city-name">
+                <span data-weather-target="cityName">--</span>,
+                <span data-weather-target="countryCode" style="font-size: 0.7em; opacity: 0.6;">--</span>
+              </div>
+              <div class="badge bg-light text-dark mb-2" data-weather-target="timeBadge" style="font-weight: 500; letter-spacing: 1px;">--</div>
+
+              <h1 class="temp-display"><span data-weather-target="tempValue">--</span>°</h1>
+              <div class="lead" data-weather-target="weatherDesc" style="font-size: 1.4rem; font-weight: 400;">--</div>
+
+              <div class="summary-grid">
+                  <div class="stat-item">
+                      <i class="ph ph-wind"></i>
+                      <span class="label">Wind</span>
+                      <div class="value"><span data-weather-target="windSpeed">--</span> <small>km/h</small></div>
+                  </div>
+                  <div class="stat-item">
+                      <i class="ph ph-drop"></i>
+                      <span class="label">Humidity</span>
+                      <div class="value"><span data-weather-target="humidity">--</span>%</div>
+                  </div>
+                  <div class="stat-item">
+                      <i class="ph ph-leaf"></i>
+                      <span class="label">Air Quality</span>
+                      <div class="value" data-weather-target="aqiSummary">--</div>
+                  </div>
+              </div>
+
+              <div class="details-trigger" data-action="click->weather#toggleDetails">
+                  View Full Report <i class="ph ph-caret-down" data-weather-target="caretIcon"></i>
+              </div>
+
+              <div class="details-wrapper" data-weather-target="detailsWrapper">
+
+                  <div class="detailed-grid">
+                      <div style="grid-column: span 2; margin-bottom: 15px; font-size: 0.9rem; opacity: 0.5; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px;">Current Conditions</div>
+
+                      <div class="detail-row">
+                          <span class="detail-label"><i class="ph ph-thermometer"></i> RealFeel®</span>
+                          <span class="detail-value"><span data-weather-target="realFeel">--</span>°</span>
+                      </div>
+                      <div class="detail-row">
+                          <span class="detail-label"><i class="ph ph-leaf"></i> Air Quality Index</span>
+                          <span class="detail-value" data-weather-target="aqiValue">--</span>
+                      </div>
+                      <div class="detail-row">
+                          <span class="detail-label"><i class="ph ph-sun-dim"></i> UV Index</span>
+                          <span class="detail-value" data-weather-target="uvIndex">--</span>
+                      </div>
+                      <div class="detail-row">
+                          <span class="detail-label"><i class="ph ph-eye"></i> Visibility</span>
+                          <span class="detail-value"><span data-weather-target="visibility">--</span> km</span>
+                      </div>
+
+                      <div class="detail-row">
+                          <span class="detail-label"><i class="ph ph-wind"></i> Wind Gusts</span>
+                          <span class="detail-value"><span data-weather-target="windGusts">--</span> km/h</span>
+                      </div>
+                       <div class="detail-row">
+                          <span class="detail-label"><i class="ph ph-compass"></i> Wind Direction</span>
+                          <span class="detail-value" data-weather-target="windDir">--</span>
+                      </div>
+
+                      <div class="detail-row">
+                          <span class="detail-label"><i class="ph ph-drop-half"></i> Dew Point</span>
+                          <span class="detail-value"><span data-weather-target="dewPoint">--</span>°</span>
+                      </div>
+                      <div class="detail-row">
+                          <span class="detail-label"><i class="ph ph-cloud"></i> Cloud Cover</span>
+                          <span class="detail-value"><span data-weather-target="cloudCover">--</span>%</span>
+                      </div>
+                      <div class="detail-row">
+                          <span class="detail-label"><i class="ph ph-gauge"></i> Pressure</span>
+                          <span class="detail-value"><span data-weather-target="pressure">--</span> mb</span>
+                      </div>
+                  </div>
+
+                  <div class="detailed-grid">
+                      <div style="grid-column: span 2; margin-bottom: 15px; font-size: 0.9rem; opacity: 0.5; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px;">Today's Forecast</div>
+
+                      <div class="detail-row">
+                          <span class="detail-label"><i class="ph ph-sun"></i> Day High</span>
+                          <span class="detail-value"><span data-weather-target="dayHigh">--</span>°</span>
+                      </div>
+                      <div class="detail-row">
+                          <span class="detail-label"><i class="ph ph-moon"></i> Night Low</span>
+                          <span class="detail-value"><span data-weather-target="nightLow">--</span>°</span>
+                      </div>
+                       <div class="detail-row">
+                          <span class="detail-label"><i class="ph ph-cloud-rain"></i> Rain Probability</span>
+                          <span class="detail-value"><span data-weather-target="precipProb">--</span>%</span>
+                      </div>
+                       <div class="detail-row">
+                          <span class="detail-label"><i class="ph ph-ruler"></i> Precipitation</span>
+                          <span class="detail-value"><span data-weather-target="precipSum">--</span> mm</span>
+                      </div>
+                  </div>
+
+              </div>
+          </div>
+      </div>
+
+      <div class="mt-4 text-white-50 small text-center">
+          <span style="opacity: 0.5;">Data by Open-Meteo</span>
+      </div>
+  </div>
+</div>
