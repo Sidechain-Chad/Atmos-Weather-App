@@ -39,16 +39,18 @@ body.theme-day.weather-clear { background: linear-gradient(to bottom, #4a3b2a, #
 .weather-container {
     position: relative;
     z-index: 3;
-    min-height: 100vh;
+
+    /* Use dvh (Dynamic Viewport Height) for better mobile centering */
+    min-height: 100dvh;
+
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
 
-    /* Padding Top */
-    padding-top: 2rem;
-
-    /* Padding Bottom: 2rem + extra space for iPhone Safe Area */
+    /* FIX: Balance the top padding with the bottom padding to push content down */
+    /* We add a base 2rem + the same safe-area inset to the top to keep it mathematically centered */
+    padding-top: calc(2rem + env(safe-area-inset-bottom));
     padding-bottom: calc(2rem + env(safe-area-inset-bottom));
 }
 
