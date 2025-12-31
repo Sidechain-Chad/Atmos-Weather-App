@@ -204,7 +204,8 @@
           this.precipProbTarget.textContent = daily.precipitation_probability_max[0];
           this.precipSumTarget.textContent = daily.precipitation_sum[0];
 
-          this.handleTheme(current, daily);
+          // We pass cityTime (the calculated Date object) instead of current
+          this.handleTheme(cityTime, daily, current.weather_code);
           this.resultTarget.style.opacity = 1;
       }
 
@@ -268,31 +269,69 @@
           this.animationFrame = requestAnimationFrame(this.animate.bind(this));
       }
 
-      handleTheme(current, daily) {
-          const now = new Date(current.time);
-          const sunrise = new Date(daily.sunrise[0]);
-          const oneHour = 60 * 60 * 1000;
-          const isMorning = Math.abs(now - sunrise) < oneHour;
+      handleTheme(cityTime, daily, weatherCode) {
+            // 1. Get Sunrise and Sunset times
+            const sunriseTime = new Date(daily.sunrise[0]);
+            const sunsetTime = new Date(daily.sunset[0]);
 
-          let timeLabel = "";
-          document.body.className = "";
+            // 2. Define a "Transition Window" (45 minutes)
+            const transitionWindow = 45 * 60 * 1000;
 
-          if (isMorning) {
-              this.appState.theme = 'morning';
-              document.body.classList.add('theme-morning');
-              timeLabel = "Dawn";
-          } else if (current.is_day === 1) {
-              this.appState.theme = 'day';
-              document.body.classList.add('theme-day');
-              if (this.appState.weather === 'clear') document.body.classList.add('weather-clear');
-              timeLabel = "Day";
-          } else {
-              this.appState.theme = 'night';
-              document.body.classList.add('theme-night');
-              timeLabel = "Night";
-          }
-          this.timeBadgeTarget.textContent = timeLabel;
-      }
+            // 3. Calculate time differences
+            const distToSunrise = cityTime - sunriseTime;
+            const distToSunset = cityTime - sunsetTime;
+
+            // Default vars
+            let theme = 'night';
+            let label = 'Night';
+
+            // 4. Logic Tree
+            if (Math.abs(distToSunrise) <= transitionWindow) {
+                // DAWN: 45 mins around Sunrise
+                theme = 'morning';
+                label = 'Dawn';
+            }
+            else if (Math.abs(distToSunset) <= transitionWindow) {
+                // DUSK: 45 mins around Sunset
+                theme = 'dusk';
+                label = 'Dusk';
+            }
+            else if (cityTime > sunriseTime && cityTime < sunsetTime) {
+                // DAY: Fully after Sunrise, before Sunset
+                theme = 'day';
+                label = 'Day';
+            }
+            else {
+                // It is dark (either before Dawn or after Dusk)
+                // CHECK: Is it "Morning" (00:00 - Dawn) or "Night" (Dusk - 23:59)?
+
+                // We get the hour of the cityTime (0-23)
+                const currentHour = cityTime.getHours();
+
+                // If it is past midnight (00:00) but before sunrise, call it Morning
+                if (currentHour >= 0 && cityTime < sunriseTime) {
+                    theme = 'morning';
+                    label = 'Morning';
+                } else {
+                    // Otherwise it is pre-midnight darkness
+                    theme = 'night';
+                    label = 'Night';
+                }
+            }
+
+            // 5. Apply Theme
+            document.body.className = `theme-${theme}`;
+
+            // Special case for Clear Day
+            if (theme === 'day' && (weatherCode === 0 || weatherCode === 1)) {
+                document.body.classList.add('weather-clear');
+            }
+
+            // 6. Update App State for Particles
+            // (Dusk uses morning particles, everything else maps 1:1)
+            this.appState.theme = theme === 'dusk' ? 'morning' : theme;
+            this.timeBadgeTarget.textContent = label;
+        }
 
       renderAqiSummary(aqi) {
           if (aqi !== null) {
