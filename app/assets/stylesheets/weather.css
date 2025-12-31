@@ -242,8 +242,12 @@ body.theme-day.weather-clear { background: linear-gradient(to bottom, #4a3b2a, #
 @media (max-width: 480px) {
     /* 1. Relax the Container */
     .weather-container {
+        /* Keep flex-start so it scrolls if the screen is too short */
         justify-content: flex-start;
-        padding-top: 0.5rem;
+        /* Ensure it takes full viewport height */
+        min-height: 100dvh;
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
     }
 
     /* 2. Slim down the Main Card */
@@ -251,7 +255,11 @@ body.theme-day.weather-clear { background: linear-gradient(to bottom, #4a3b2a, #
         width: 92%;
         padding: 1.2rem 0.8rem;
         border-radius: 25px;
-        margin-top: 0.5rem;
+
+        /* MAGIC FIX: This vertically centers the card if there is space,
+           but allows it to float to the top if scrolling is needed. */
+        margin-top: auto;
+        margin-bottom: auto;
     }
 
     /* 3. Aggressively Resize Big Typography */
@@ -296,7 +304,7 @@ body.theme-day.weather-clear { background: linear-gradient(to bottom, #4a3b2a, #
 
     /* FIX: Make sure the icon (Dew Point, etc) stays visible */
     .detail-label i {
-        font-size: 0.9rem; /* Slightly larger than text for clarity */
+        font-size: 0.9rem;
         opacity: 0.9;
     }
 
