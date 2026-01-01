@@ -210,9 +210,18 @@ body.theme-day.weather-clear { background: linear-gradient(to bottom, #4a3b2a, #
 }
 
 .detailed-grid {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;
-    margin-top: 1.5rem; text-align: left;
-    background: rgba(0,0,0,0.1); border-radius: 20px; padding: 1.5rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+
+    /* FIX: Added margin-bottom to match margin-top for equal spacing */
+    margin-top: 1.5rem;
+    margin-bottom: 1.5rem;
+
+    text-align: left;
+    background: rgba(0,0,0,0.1);
+    border-radius: 20px;
+    padding: 1.5rem;
 }
 
 .detail-row {
@@ -292,7 +301,12 @@ body.theme-day.weather-clear { background: linear-gradient(to bottom, #4a3b2a, #
         grid-template-columns: 1fr 1fr;
         gap: 0.5rem;
         padding: 0.8rem;
+
+        /* FIX: Added margin-bottom here too.
+           I made it 1.5rem (larger than top) to give extra breathing room
+           at the bottom of the phone screen */
         margin-top: 1rem;
+        margin-bottom: 1.5rem;
     }
     .detail-row { padding: 6px 0; }
 
