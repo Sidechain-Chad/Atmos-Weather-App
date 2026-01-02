@@ -179,6 +179,8 @@ body.theme-day.weather-clear { background: linear-gradient(to bottom, #4a3b2a, #
 
 /* --- ICON COLOR PALETTE --- */
 
+/* 1. APPLY COLORS GLOBALLY (Summary & Details) */
+
 /* Sun / Clear Day (Gold with Glow) */
 i.ph-sun, i.ph-sun-dim, i.ph-sun-horizon {
     color: #FFD700;
@@ -191,8 +193,8 @@ i.ph-moon, i.ph-moon-stars {
     filter: drop-shadow(0 0 5px rgba(224, 247, 250, 0.5));
 }
 
-/* Rain / Humidity / Drops (Cyan Blue) */
-i.ph-cloud-rain, i.ph-drop, i.ph-drop-half {
+/* Rain / Humidity / Drops / Precip (Cyan Blue) */
+i.ph-cloud-rain, i.ph-drop, i.ph-drop-half, i.ph-ruler {
     color: #7FDBFF;
     filter: drop-shadow(0 0 5px rgba(127, 219, 255, 0.4));
 }
@@ -215,14 +217,39 @@ i.ph-cloud, i.ph-cloud-fog {
     opacity: 0.9;
 }
 
-/* Wind (Light Green/Mint) */
-i.ph-wind {
+/* Wind / Leaf (Light Green/Mint) */
+i.ph-wind, i.ph-leaf {
     color: #a8e6cf;
 }
 
 /* Thermometer (Warm Orange) */
 i.ph-thermometer {
     color: #ff8b94;
+}
+
+/* Visibility (Lavender) */
+i.ph-eye {
+    color: #DCD0FF;
+}
+
+/* Pressure / Gauge (Soft Yellow) */
+i.ph-gauge {
+    color: #FDFD96;
+}
+
+/* Compass (White/Silver) */
+i.ph-compass {
+    color: #ecf0f1;
+    opacity: 0.8;
+}
+
+/* 2. FORCE HOURLY ICONS BACK TO WHITE */
+/* This overrides the colors above just for the carousel */
+.hourly-container i {
+    color: white !important;
+    filter: none !important;
+    text-shadow: none !important;
+    opacity: 1;
 }
 
 /* Pulse Animation */
