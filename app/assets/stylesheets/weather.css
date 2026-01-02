@@ -247,6 +247,39 @@ body.theme-day.weather-clear { background: linear-gradient(to bottom, #4a3b2a, #
     border: 1px solid rgba(255,255,255,0.1);
 }
 
+/* --- CUSTOM SCROLLBAR FOR SEARCH RESULTS --- */
+
+/* 1. The Scrollbar Track (Background) */
+.search-results::-webkit-scrollbar {
+    width: 8px; /* Slimmer width */
+}
+
+.search-results::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05); /* Very subtle track */
+    border-radius: 0 15px 15px 0; /* Rounded corners on the right */
+}
+
+/* 2. The Scrollbar Handle (The moving part) */
+.search-results::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2); /* Semi-transparent white */
+    border-radius: 10px; /* Pill shape */
+    border: 2px solid rgba(40, 60, 55, 0.0); /* Transparent border creates "padding" effect */
+    background-clip: content-box; /* Ensures the border trick works */
+}
+
+/* 3. Handle on Hover */
+.search-results::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.4); /* Brighter when you grab it */
+    border: 2px solid rgba(40, 60, 55, 0.0);
+    background-clip: content-box;
+}
+
+/* Firefox Support (Standard Property) */
+.search-results {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) rgba(255, 255, 255, 0.05);
+}
+
 .search-results.active {
     display: block;
 }
