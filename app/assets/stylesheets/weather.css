@@ -389,6 +389,59 @@ i.ph-compass {
     display: none; position: absolute; right: 15px; top: 12px;
     animation: rotation 1s linear infinite;
 }
+
+/* --- DYNAMIC THEME COLORS (Search Bar & Dropdown) --- */
+
+/* 1. NIGHT THEME (Blue/Black Tint) */
+body.theme-night .search-results {
+    background: rgba(10, 25, 30, 0.95); /* Deep Dark Blue */
+    border-color: rgba(100, 200, 255, 0.1);
+}
+body.theme-night .form-control:focus {
+    background: rgba(200, 230, 255, 0.15); /* Cool White Tint */
+    border-color: rgba(100, 200, 255, 0.3);
+}
+
+/* 2. MORNING THEME (Purple/Mauve Tint) */
+body.theme-morning .search-results {
+    background: rgba(50, 40, 60, 0.95); /* Deep Purple */
+    border-color: rgba(255, 200, 220, 0.1);
+}
+body.theme-morning .form-control:focus {
+    background: rgba(255, 220, 230, 0.15); /* Warm Pink Tint */
+    border-color: rgba(255, 200, 220, 0.3);
+}
+
+/* 3. DUSK THEME (Red/Violet Tint) */
+body.theme-dusk .search-results {
+    background: rgba(60, 30, 40, 0.95); /* Deep Red/Violet */
+    border-color: rgba(255, 180, 180, 0.1);
+}
+body.theme-dusk .form-control:focus {
+    background: rgba(255, 200, 200, 0.15); /* Rose Tint */
+    border-color: rgba(255, 150, 150, 0.3);
+}
+
+/* 4. DAY THEME (Green/Teal Tint) - This matches your default */
+body.theme-day .search-results {
+    background: rgba(40, 60, 55, 0.95); /* Deep Green */
+    border-color: rgba(200, 255, 200, 0.1);
+}
+body.theme-day .form-control:focus {
+    background: rgba(220, 255, 220, 0.15); /* Fresh Green Tint */
+    border-color: rgba(150, 255, 150, 0.3);
+}
+
+/* 5. CLEAR DAY (Gold/Warm Tint) */
+body.theme-day.weather-clear .search-results {
+    background: rgba(60, 55, 40, 0.95); /* Deep Brown/Gold */
+    border-color: rgba(255, 215, 0, 0.2);
+}
+body.theme-day.weather-clear .form-control:focus {
+    background: rgba(255, 245, 200, 0.2); /* Sunny Gold Tint */
+    border-color: rgba(255, 215, 0, 0.4);
+}
+
 @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
 /* --- SKELETON LOADER --- */
