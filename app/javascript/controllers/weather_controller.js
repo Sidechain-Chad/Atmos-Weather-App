@@ -88,14 +88,15 @@ class Mushi {
 }
 
 export default class extends Controller {
+    // FIXED: Cleaned up duplicate targets list
     static targets = [
-        "canvas", "cityInput", "spinner", "result", "errorAlert", "errorMsg",
+        "canvas", "cityInput", "spinner", "result", "skeleton",
+        "errorAlert", "errorMsg", "searchResults",
         "cityName", "countryCode", "timeBadge", "tempValue", "weatherDesc",
         "dateDisplay", "windSpeed", "humidity", "aqiSummary", "detailsWrapper",
         "caretIcon", "realFeel", "aqiValue", "uvIndex", "visibility",
         "windGusts", "windDir", "dewPoint", "cloudCover", "pressure",
-        "dayHigh", "nightLow", "precipProb", "precipSum", "hourlyContainer",
-        "searchResults"
+        "dayHigh", "nightLow", "precipProb", "precipSum", "hourlyContainer"
     ]
 
     connect() {
@@ -490,7 +491,27 @@ export default class extends Controller {
     }
 
     showLoading(isLoading) {
+        // Toggle the little spinner in the search bar
         this.spinnerTarget.style.display = isLoading ? 'inline-block' : 'none';
+
+        if (isLoading) {
+            // HIDE the real results
+            this.resultTarget.style.display = 'none';
+            this.resultTarget.style.opacity = '0';
+
+            // SHOW the skeleton
+            this.skeletonTarget.style.display = 'block';
+        } else {
+            // HIDE the skeleton
+            this.skeletonTarget.style.display = 'none';
+
+            // SHOW the real results (fade them in)
+            this.resultTarget.style.display = 'block';
+            // Small timeout to allow the display:block to apply before fading in
+            setTimeout(() => {
+                this.resultTarget.style.opacity = '1';
+            }, 10);
+        }
     }
 
     showError(msg) {
