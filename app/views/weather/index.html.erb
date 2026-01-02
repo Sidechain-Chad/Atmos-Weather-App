@@ -11,9 +11,14 @@
 
     <div class="container weather-container">
         <div class="glass-panel text-center">
-            <form data-action="submit->weather#search" class="search-box">
-                <input type="text" data-weather-target="cityInput" class="form-control" placeholder="City name..." value="Cape Town">
-                <span class="loader" data-weather-target="spinner"></span>
+            <form data-action="submit->weather#search input->weather#handleInput" class="search-box">
+                <input type="text"
+                      data-weather-target="cityInput"
+                      class="form-control"
+                      placeholder="Search city..."
+                      autocomplete="off"> <span class="loader" data-weather-target="spinner"></span>
+
+                <div data-weather-target="searchResults" class="search-results"></div>
             </form>
 
             <div data-weather-target="result" style="opacity: 0; transition: opacity 0.8s;">

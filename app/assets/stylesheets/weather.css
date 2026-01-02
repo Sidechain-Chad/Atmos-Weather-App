@@ -229,6 +229,51 @@ body.theme-day.weather-clear { background: linear-gradient(to bottom, #4a3b2a, #
 .aqi-fair { background: #ff9800; color: white; }
 .aqi-poor { background: #f44336; color: white; }
 
+/* --- SEARCH DROPDOWN --- */
+.search-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    background: rgba(40, 60, 55, 0.95); /* Darker glass for contrast */
+    backdrop-filter: blur(15px);
+    border-radius: 15px;
+    margin-top: 10px;
+    max-height: 250px;
+    overflow-y: auto;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    z-index: 50;
+    display: none; /* Hidden by default */
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+.search-results.active {
+    display: block;
+}
+
+.search-result-item {
+    padding: 12px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.2s;
+    font-size: 0.95rem;
+}
+
+.search-result-item:last-child {
+    border-bottom: none;
+}
+
+.search-result-item:hover {
+    background: rgba(255,255,255,0.1);
+}
+
+.search-result-item small {
+    display: block;
+    opacity: 0.6;
+    font-size: 0.75rem;
+}
+
 /* Loader */
 .loader {
     width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.5);
