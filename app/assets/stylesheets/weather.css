@@ -179,76 +179,50 @@ body.theme-day.weather-clear { background: linear-gradient(to bottom, #4a3b2a, #
 
 /* --- ICON COLOR PALETTE --- */
 
-/* 1. SUN & DAY (Gold/Orange with Glow) */
-i.ph-sun, i.ph-sun-dim, i.ph-sun-horizon, i.ph-cloud-sun {
-    color: #FFD700; /* Gold */
+/* Sun / Clear Day (Gold with Glow) */
+i.ph-sun, i.ph-sun-dim, i.ph-sun-horizon {
+    color: #FFD700;
     filter: drop-shadow(0 0 5px rgba(255, 215, 0, 0.6));
 }
 
-/* 2. MOON & NIGHT (Pale Cyan with Glow) */
-i.ph-moon, i.ph-moon-stars, i.ph-cloud-moon {
-    color: #E0F7FA; /* Pale Cyan */
+/* Moon / Clear Night (Pale Blue/White) */
+i.ph-moon, i.ph-moon-stars {
+    color: #E0F7FA;
     filter: drop-shadow(0 0 5px rgba(224, 247, 250, 0.5));
 }
 
-/* 3. RAIN & HUMIDITY (Cyan Blue) */
-i.ph-cloud-rain, i.ph-drop, i.ph-drop-half, i.ph-ruler {
-    color: #7FDBFF; /* Cyan */
+/* Rain / Humidity / Drops (Cyan Blue) */
+i.ph-cloud-rain, i.ph-drop, i.ph-drop-half {
+    color: #7FDBFF;
     filter: drop-shadow(0 0 5px rgba(127, 219, 255, 0.4));
 }
 
-/* 4. STORMS (Soft Purple) */
+/* Storms (Light Purple) */
 i.ph-cloud-lightning {
-    color: #E0BBE4; /* Lavender */
+    color: #E0BBE4;
     filter: drop-shadow(0 0 8px rgba(224, 187, 228, 0.6));
 }
 
-/* 5. SNOW (Bright White with Ice Blue Glow) */
+/* Snow (Bright White-Cyan) */
 i.ph-snowflake {
-    color: #ffffff;
-    text-shadow: 0 0 8px #00FFFF;
+    color: #fff;
+    text-shadow: 0 0 5px #00FFFF;
 }
 
-/* 6. CLOUDS & FOG (Silver/Grey) */
+/* Clouds / Fog (Light Grey) */
 i.ph-cloud, i.ph-cloud-fog {
-    color: #bdc3c7;
+    color: #ecf0f1;
     opacity: 0.9;
 }
 
-/* 7. WIND (Mint Green) */
-i.ph-wind, i.ph-wind-gusts {
+/* Wind (Light Green/Mint) */
+i.ph-wind {
     color: #a8e6cf;
 }
 
-/* 8. TEMPERATURE (Warm Coral) */
+/* Thermometer (Warm Orange) */
 i.ph-thermometer {
     color: #ff8b94;
-}
-
-/* 9. NATURE / AQI (Fresh Green) */
-i.ph-leaf {
-    color: #98FB98; /* Pale Green */
-}
-
-/* 10. VISIBILITY (Light Lavender) */
-i.ph-eye {
-    color: #DCD0FF;
-}
-
-/* 11. PRESSURE / GAUGE (Soft Yellow) */
-i.ph-gauge {
-    color: #FDFD96;
-}
-
-/* 12. NAVIGATION / COMPASS (White/Silver) */
-i.ph-compass {
-    color: #ecf0f1;
-    opacity: 0.8;
-}
-
-/* 13. WARNING / ERROR (Red - for the alert box) */
-i.ph-warning-circle {
-    color: #ffcccb;
 }
 
 /* Pulse Animation */
