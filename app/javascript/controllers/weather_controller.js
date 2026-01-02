@@ -95,7 +95,7 @@ export default class extends Controller {
         "caretIcon", "realFeel", "aqiValue", "uvIndex", "visibility",
         "windGusts", "windDir", "dewPoint", "cloudCover", "pressure",
         "dayHigh", "nightLow", "precipProb", "precipSum", "hourlyContainer",
-        "searchResults" // NEW TARGET
+        "searchResults"
     ]
 
     connect() {
@@ -103,14 +103,15 @@ export default class extends Controller {
             theme: 'night',
             weather: 'snow',
             particles: [],
-            mouse: { x: null, y: null }
+            mouse: { x: null, y: null },
+            userLocation: null // Store GPS here
         };
 
         this.initCanvas();
         this.animate();
         this.initDragScroll();
 
-        // NEW: Try to get User Location on load
+        // Try to get location on load
         this.getUserLocation();
 
         // Close dropdown when clicking outside
@@ -126,7 +127,8 @@ export default class extends Controller {
         cancelAnimationFrame(this.animationFrame);
     }
 
-    // --- NEW: Geolocation Logic ---
+    // --- Geolocation & Smart Search Logic ---
+
     getUserLocation() {
         if (navigator.geolocation) {
             this.showLoading(true);
@@ -134,10 +136,14 @@ export default class extends Controller {
                 (position) => {
                     const lat = position.coords.latitude;
                     const lon = position.coords.longitude;
+
+                    // SAVE LOCATION to AppState for sorting
+                    this.appState.userLocation = { lat, lon };
+
                     this.fetchWeatherByCoords(lat, lon);
                 },
                 (error) => {
-                    console.log("Geolocation denied or failed, defaulting to Cape Town");
+                    console.log("Geolocation denied, defaulting to Cape Town");
                     this.fetchWeather('Cape Town');
                 }
             );
@@ -146,27 +152,6 @@ export default class extends Controller {
         }
     }
 
-    async fetchWeatherByCoords(lat, lon) {
-        // We have coords, but we need a City Name for the UI.
-        // We use a free reverse geocoding API for this.
-        try {
-            // 1. Reverse Geocode (Get Name)
-            const revRes = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`);
-            const revData = await revRes.json();
-            const city = revData.city || revData.locality || "My Location";
-            const country = revData.countryCode || "";
-
-            // 2. Fetch Weather using the known coords
-            this.executeWeatherFetch(lat, lon, city, country);
-
-        } catch (e) {
-            console.error("Reverse geocoding failed", e);
-            // Fallback: Just show "My Location" if name lookup fails
-            this.executeWeatherFetch(lat, lon, "My Location", "");
-        }
-    }
-
-    // --- NEW: Smart Search Logic ---
     async handleInput() {
         const query = this.cityInputTarget.value;
         if (query.length < 3) {
@@ -174,13 +159,32 @@ export default class extends Controller {
             return;
         }
 
-        // Debounce could go here, but for simplicity we'll just fetch
         try {
+            // Fetch 5 results (generic)
             const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=5&language=en&format=json`);
             const data = await res.json();
 
             if (data.results) {
-                this.renderSearchResults(data.results);
+                // SORTING MAGIC: Re-order based on distance from user
+                let sortedResults = data.results;
+                if (this.appState.userLocation) {
+                    sortedResults = data.results.sort((a, b) => {
+                        const distA = this.calculateDistance(
+                            this.appState.userLocation.lat,
+                            this.appState.userLocation.lon,
+                            a.latitude,
+                            a.longitude
+                        );
+                        const distB = this.calculateDistance(
+                            this.appState.userLocation.lat,
+                            this.appState.userLocation.lon,
+                            b.latitude,
+                            b.longitude
+                        );
+                        return distA - distB; // Closest first
+                    });
+                }
+                this.renderSearchResults(sortedResults);
             } else {
                 this.searchResultsTarget.classList.remove('active');
             }
@@ -189,19 +193,37 @@ export default class extends Controller {
         }
     }
 
+    // Simple Haversine Distance (doesn't need to be perfect, just good for sorting)
+    calculateDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371; // km
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c;
+    }
+
     renderSearchResults(results) {
         this.searchResultsTarget.innerHTML = '';
         results.forEach(city => {
             const div = document.createElement('div');
             div.className = 'search-result-item';
+
+            // Build a readable label (e.g., "Belgravia, South Africa")
+            const admin = city.admin1 || city.admin2 || '';
+            const country = city.country || '';
+            const locationStr = [admin, country].filter(Boolean).join(', ');
+
             div.innerHTML = `
-                ${city.name}
-                <small>${city.admin1 || ''}, ${city.country || ''}</small>
+                <strong>${city.name}</strong>
+                <small>${locationStr}</small>
             `;
-            // Store data on the element to use when clicked
+
             div.onclick = () => {
-                this.cityInputTarget.value = city.name; // Update input
-                this.searchResultsTarget.classList.remove('active'); // Hide list
+                this.cityInputTarget.value = city.name;
+                this.searchResultsTarget.classList.remove('active');
+                // Use the EXACT coordinates from the clicked result
                 this.executeWeatherFetch(city.latitude, city.longitude, city.name, city.country_code);
             };
             this.searchResultsTarget.appendChild(div);
@@ -209,19 +231,32 @@ export default class extends Controller {
         this.searchResultsTarget.classList.add('active');
     }
 
-    // Standard Search (Enter key)
+    async fetchWeatherByCoords(lat, lon) {
+        // Reverse Geocode to get a nice name for the UI
+        try {
+            const revRes = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`);
+            const revData = await revRes.json();
+            const city = revData.city || revData.locality || "My Location";
+            const country = revData.countryCode || "";
+            this.executeWeatherFetch(lat, lon, city, country);
+        } catch (e) {
+            console.error("Reverse geocoding failed", e);
+            this.executeWeatherFetch(lat, lon, "My Location", "");
+        }
+    }
+
+    // --- Core Weather Fetching ---
+
     search(event) {
         event.preventDefault();
-        // If the user hits enter, we take the first result or just call the old fetch
+        // If they just hit enter, do a basic fetch (will likely pick result #1)
         if (this.cityInputTarget.value) {
             this.fetchWeather(this.cityInputTarget.value);
             this.searchResultsTarget.classList.remove('active');
         }
     }
 
-    // --- Core Data Fetching ---
-
-    // Legacy wrapper for string-based search (defaults to first result)
+    // Legacy fetch (by name string)
     async fetchWeather(city) {
         this.showLoading(true);
         this.hideError();
@@ -229,12 +264,23 @@ export default class extends Controller {
         this.caretIconTarget.classList.replace('ph-caret-up', 'ph-caret-down');
 
         try {
-            const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en&format=json`);
+            const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=5&language=en&format=json`);
             const geoData = await geoRes.json();
 
             if (!geoData.results?.length) throw new Error("City not found.");
 
-            const { latitude, longitude, name, country } = geoData.results[0];
+            // Sort this legacy fetch too if we have user location!
+            let bestMatch = geoData.results[0];
+            if (this.appState.userLocation) {
+                geoData.results.sort((a, b) => {
+                    const distA = this.calculateDistance(this.appState.userLocation.lat, this.appState.userLocation.lon, a.latitude, a.longitude);
+                    const distB = this.calculateDistance(this.appState.userLocation.lat, this.appState.userLocation.lon, b.latitude, b.longitude);
+                    return distA - distB;
+                });
+                bestMatch = geoData.results[0];
+            }
+
+            const { latitude, longitude, name, country } = bestMatch;
             this.executeWeatherFetch(latitude, longitude, name, country);
 
         } catch (error) {
@@ -243,7 +289,7 @@ export default class extends Controller {
         }
     }
 
-    // The Master Fetcher (Coordinates -> Weather)
+    // Master Fetcher (Coordinates -> Weather)
     async executeWeatherFetch(latitude, longitude, name, country) {
         this.showLoading(true);
         this.hideError();
@@ -267,8 +313,7 @@ export default class extends Controller {
         }
     }
 
-    // ... (The rest of your functions: processAllData, renderHourly, handleTheme, etc remain exactly the same) ...
-    // Paste the rest of your existing logic below here (processAllData, etc.)
+    // --- UI & Rendering Logic (Existing) ---
 
     processAllData(city, country, wData, aData, utcOffsetSeconds) {
          const current = wData.current;
@@ -276,7 +321,6 @@ export default class extends Controller {
          const hourly = wData.hourly;
          const aqi = aData.current ? aData.current.us_aqi : null;
 
-         // 1. CALCULATE CITY TIME
          const nowUTC = new Date().getTime() + (new Date().getTimezoneOffset() * 60000);
          const cityTime = new Date(nowUTC + (utcOffsetSeconds * 1000));
          const currentHour = cityTime.getHours();
