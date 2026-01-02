@@ -320,16 +320,27 @@ body.theme-day.weather-clear { background: linear-gradient(to bottom, #4a3b2a, #
 @media (max-width: 480px) {
     /* 1. Relax the Container */
     .weather-container {
-        justify-content: flex-start;
-        padding-top: 0.5rem;
+        /* Remove 'justify-content: flex-start' so we can center */
+        /* Use safe-area padding to respect the notch/home bar */
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+
+        /* Ensure the container is always at least as tall as the screen */
+        min-height: 100dvh;
+        display: flex;
+        flex-direction: column;
     }
 
-    /* 2. Slim down the Main Card */
+    /* 2. Slim down & CENTER the Main Card */
     .glass-panel {
         width: 92%;
         padding: 1.2rem 0.8rem;
         border-radius: 25px;
-        margin-top: 0.5rem;
+
+        /* THE MAGIC FIX: 'margin: auto' vertically centers the card
+           if there is empty space (like in your screenshot),
+           but safely allows scrolling if the card grows taller than the screen. */
+        margin: auto;
     }
 
     /* 3. Aggressively Resize Big Typography */
@@ -363,18 +374,20 @@ body.theme-day.weather-clear { background: linear-gradient(to bottom, #4a3b2a, #
         gap: 0.5rem;
         padding: 0.8rem;
         margin-top: 1rem;
+        /* Re-adding the bottom spacing fix from previous step */
+        margin-bottom: 1.5rem;
     }
     .detail-row { padding: 6px 0; }
 
     /* FIX: Ensure label and icon fit on one line */
     .detail-label {
         font-size: 0.7rem;
-        gap: 4px; /* Bring icon closer to text */
+        gap: 4px;
     }
 
     /* FIX: Make sure the icon (Dew Point, etc) stays visible */
     .detail-label i {
-        font-size: 0.9rem; /* Slightly larger than text for clarity */
+        font-size: 0.9rem;
         opacity: 0.9;
     }
 
