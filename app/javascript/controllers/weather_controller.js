@@ -224,8 +224,9 @@ export default class extends Controller {
             div.onclick = () => {
                 this.cityInputTarget.value = city.name;
                 this.searchResultsTarget.classList.remove('active');
-                // Use the EXACT coordinates from the clicked result
-                this.executeWeatherFetch(city.latitude, city.longitude, city.name, city.country_code);
+
+                // FIXED: Changed 'city.country_code' to 'city.country' to get full name
+                this.executeWeatherFetch(city.latitude, city.longitude, city.name, city.country);
             };
             this.searchResultsTarget.appendChild(div);
         });
@@ -238,7 +239,10 @@ export default class extends Controller {
             const revRes = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`);
             const revData = await revRes.json();
             const city = revData.city || revData.locality || "My Location";
-            const country = revData.countryCode || "";
+
+            // FIXED: prioritize 'countryName' over 'countryCode'
+            const country = revData.countryName || revData.countryCode || "";
+
             this.executeWeatherFetch(lat, lon, city, country);
         } catch (e) {
             console.error("Reverse geocoding failed", e);
