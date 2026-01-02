@@ -177,6 +177,54 @@ body.theme-day.weather-clear { background: linear-gradient(to bottom, #4a3b2a, #
     text-shadow: 0 2px 5px rgba(0,0,0,0.3);
 }
 
+/* --- ICON COLOR PALETTE --- */
+
+/* Sun / Clear Day (Gold with Glow) */
+i.ph-sun, i.ph-sun-dim, i.ph-sun-horizon {
+    color: #FFD700;
+    filter: drop-shadow(0 0 5px rgba(255, 215, 0, 0.6));
+}
+
+/* Moon / Clear Night (Pale Blue/White) */
+i.ph-moon, i.ph-moon-stars {
+    color: #E0F7FA;
+    filter: drop-shadow(0 0 5px rgba(224, 247, 250, 0.5));
+}
+
+/* Rain / Humidity / Drops (Cyan Blue) */
+i.ph-cloud-rain, i.ph-drop, i.ph-drop-half {
+    color: #7FDBFF;
+    filter: drop-shadow(0 0 5px rgba(127, 219, 255, 0.4));
+}
+
+/* Storms (Light Purple) */
+i.ph-cloud-lightning {
+    color: #E0BBE4;
+    filter: drop-shadow(0 0 8px rgba(224, 187, 228, 0.6));
+}
+
+/* Snow (Bright White-Cyan) */
+i.ph-snowflake {
+    color: #fff;
+    text-shadow: 0 0 5px #00FFFF;
+}
+
+/* Clouds / Fog (Light Grey) */
+i.ph-cloud, i.ph-cloud-fog {
+    color: #ecf0f1;
+    opacity: 0.9;
+}
+
+/* Wind (Light Green/Mint) */
+i.ph-wind {
+    color: #a8e6cf;
+}
+
+/* Thermometer (Warm Orange) */
+i.ph-thermometer {
+    color: #ff8b94;
+}
+
 /* Pulse Animation */
 @keyframes now-pulse {
     0%, 100% { filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.4)); }
