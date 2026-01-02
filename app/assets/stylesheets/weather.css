@@ -210,18 +210,9 @@ body.theme-day.weather-clear { background: linear-gradient(to bottom, #4a3b2a, #
 }
 
 .detailed-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-
-    /* FIX: Added margin-bottom to match margin-top for equal spacing */
-    margin-top: 1.5rem;
-    margin-bottom: 1.5rem;
-
-    text-align: left;
-    background: rgba(0,0,0,0.1);
-    border-radius: 20px;
-    padding: 1.5rem;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;
+    margin-top: 1.5rem; text-align: left;
+    background: rgba(0,0,0,0.1); border-radius: 20px; padding: 1.5rem;
 }
 
 .detail-row {
@@ -251,12 +242,8 @@ body.theme-day.weather-clear { background: linear-gradient(to bottom, #4a3b2a, #
 @media (max-width: 480px) {
     /* 1. Relax the Container */
     .weather-container {
-        /* Keep flex-start so it scrolls if the screen is too short */
         justify-content: flex-start;
-        /* Ensure it takes full viewport height */
-        min-height: 100dvh;
-        padding-top: env(safe-area-inset-top);
-        padding-bottom: env(safe-area-inset-bottom);
+        padding-top: 0.5rem;
     }
 
     /* 2. Slim down the Main Card */
@@ -264,11 +251,7 @@ body.theme-day.weather-clear { background: linear-gradient(to bottom, #4a3b2a, #
         width: 92%;
         padding: 1.2rem 0.8rem;
         border-radius: 25px;
-
-        /* MAGIC FIX: This vertically centers the card if there is space,
-           but allows it to float to the top if scrolling is needed. */
-        margin-top: auto;
-        margin-bottom: auto;
+        margin-top: 0.5rem;
     }
 
     /* 3. Aggressively Resize Big Typography */
@@ -301,12 +284,7 @@ body.theme-day.weather-clear { background: linear-gradient(to bottom, #4a3b2a, #
         grid-template-columns: 1fr 1fr;
         gap: 0.5rem;
         padding: 0.8rem;
-
-        /* FIX: Added margin-bottom here too.
-           I made it 1.5rem (larger than top) to give extra breathing room
-           at the bottom of the phone screen */
         margin-top: 1rem;
-        margin-bottom: 1.5rem;
     }
     .detail-row { padding: 6px 0; }
 
@@ -318,7 +296,7 @@ body.theme-day.weather-clear { background: linear-gradient(to bottom, #4a3b2a, #
 
     /* FIX: Make sure the icon (Dew Point, etc) stays visible */
     .detail-label i {
-        font-size: 0.9rem;
+        font-size: 0.9rem; /* Slightly larger than text for clarity */
         opacity: 0.9;
     }
 
