@@ -21,6 +21,24 @@
                 <div data-weather-target="searchResults" class="search-results"></div>
             </form>
 
+            <div data-weather-target="skeleton" style="display: none; opacity: 0.7;">
+
+                <div class="skeleton-line" style="width: 60%; height: 30px; margin: 0 auto 10px;"></div>
+                <div class="skeleton-line" style="width: 40%; height: 15px; margin: 0 auto 20px;"></div>
+
+                <div class="skeleton-line" style="width: 120px; height: 100px; margin: 10px auto;"></div>
+
+                <div class="skeleton-line" style="width: 50%; height: 20px; margin: 0 auto 40px;"></div>
+
+                <div class="skeleton-line" style="width: 100%; height: 90px; border-radius: 15px; margin-bottom: 30px;"></div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                    <div class="skeleton-line" style="height: 60px; border-radius: 15px;"></div>
+                    <div class="skeleton-line" style="height: 60px; border-radius: 15px;"></div>
+                    <div class="skeleton-line" style="height: 60px; border-radius: 15px;"></div>
+                </div>
+            </div>
+
             <div data-weather-target="result" style="opacity: 0; transition: opacity 0.8s;">
                 <div class="city-name">
                     <span data-weather-target="cityName">--</span>,

@@ -316,6 +316,19 @@ body.theme-day.weather-clear { background: linear-gradient(to bottom, #4a3b2a, #
 }
 @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
+/* --- SKELETON LOADER --- */
+.skeleton-line {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-pulse {
+    0% { opacity: 0.3; }
+    50% { opacity: 0.7; }
+    100% { opacity: 0.3; }
+}
+
 /* --- MOBILE OPTIMIZATIONS (iPhone SE & Small Screens) --- */
 @media (max-width: 480px) {
     /* 1. Relax the Container */
