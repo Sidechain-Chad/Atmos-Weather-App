@@ -491,26 +491,54 @@ export default class extends Controller {
     }
 
     showLoading(isLoading) {
-        // Toggle the little spinner in the search bar
         this.spinnerTarget.style.display = isLoading ? 'inline-block' : 'none';
 
         if (isLoading) {
-            // HIDE the real results
-            this.resultTarget.style.display = 'none';
+            // --- SEARCH START (The "Exit") ---
+
+            // 1. Close details immediately (prevents height snapping later)
+            this.detailsWrapperTarget.classList.remove('open');
+            this.caretIconTarget.classList.replace('ph-caret-up', 'ph-caret-down');
+
+            // 2. Slow Fade Out of Old Result (0.4s)
+            // This extra time allows the user to register the change
+            this.resultTarget.style.transition = 'opacity 0.4s ease';
             this.resultTarget.style.opacity = '0';
 
-            // SHOW the skeleton
-            this.skeletonTarget.style.display = 'block';
-        } else {
-            // HIDE the skeleton
-            this.skeletonTarget.style.display = 'none';
-
-            // SHOW the real results (fade them in)
-            this.resultTarget.style.display = 'block';
-            // Small timeout to allow the display:block to apply before fading in
+            // 3. Wait 400ms (matching the fade above) before showing Skeleton
             setTimeout(() => {
-                this.resultTarget.style.opacity = '1';
-            }, 10);
+                this.resultTarget.style.display = 'none';
+
+                this.skeletonTarget.style.display = 'block';
+                this.skeletonTarget.style.opacity = '0';
+
+                // Fade in Skeleton
+                requestAnimationFrame(() => {
+                    this.skeletonTarget.style.transition = 'opacity 0.4s ease';
+                    this.skeletonTarget.style.opacity = '0.7';
+                });
+            }, 400);
+
+        } else {
+            // --- DATA RECEIVED (The "Entrance") ---
+
+            // 1. Slow Fade Out of Skeleton (0.4s)
+            this.skeletonTarget.style.transition = 'opacity 0.4s ease';
+            this.skeletonTarget.style.opacity = '0';
+
+            // 2. Wait 400ms, then swap to New Result
+            setTimeout(() => {
+                this.skeletonTarget.style.display = 'none';
+
+                this.resultTarget.style.display = 'block';
+                this.resultTarget.style.opacity = '0';
+
+                // 3. Very Slow, Premium Fade In of New Data (0.8s)
+                requestAnimationFrame(() => {
+                    this.resultTarget.style.transition = 'opacity 0.8s ease';
+                    this.resultTarget.style.opacity = '1';
+                });
+            }, 400);
         }
     }
 
