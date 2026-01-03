@@ -96,7 +96,7 @@ export default class extends Controller {
         "dateDisplay", "windSpeed", "humidity", "aqiSummary", "detailsWrapper",
         "caretIcon", "realFeel", "aqiValue", "uvIndex", "visibility",
         "windGusts", "windDir", "dewPoint", "cloudCover", "pressure",
-        "dayHigh", "nightLow", "precipProb", "precipSum", "hourlyContainer"
+        "dayHigh", "nightLow", "precipProb", "precipSum", "hourlyContainer", "dailyContainer"
     ]
 
     connect() {
