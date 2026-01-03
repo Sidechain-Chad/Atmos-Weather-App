@@ -295,14 +295,17 @@ export default class extends Controller {
     }
 
     // Master Fetcher (Coordinates -> Weather)
-    async executeWeatherFetch(latitude, longitude, name, country) {
-        this.showLoading(true);
-        this.hideError();
+// Master Fetcher (Coordinates -> Weather)
+async executeWeatherFetch(latitude, longitude, name, country) {
+    this.showLoading(true);
+    this.hideError();
 
-        try {
-            const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,rain,showers,snowfall,weather_code,cloud_cover,pressure_msl,surface_pressure,wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,dew_point_2m,uv_index&hourly=temperature_2m,weather_code,is_day&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,uv_index_max,precipitation_sum,precipitation_probability_max,wind_speed_10m_max&timezone=auto&forecast_days=1`;
+    try {
+            // CHANGE 'forecast_days=1' TO 'forecast_days=8' AT THE VERY END
+            const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,rain,showers,snowfall,weather_code,cloud_cover,pressure_msl,surface_pressure,wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,dew_point_2m,uv_index&hourly=temperature_2m,weather_code,is_day&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,uv_index_max,precipitation_sum,precipitation_probability_max,wind_speed_10m_max&timezone=auto&forecast_days=8`;
+
             const aqiUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${latitude}&longitude=${longitude}&current=us_aqi`;
-
+            // ...
             const [weatherRes, aqiRes] = await Promise.all([fetch(weatherUrl), fetch(aqiUrl)]);
 
             if (!weatherRes.ok) throw new Error("Weather service unavailable.");
@@ -345,6 +348,7 @@ export default class extends Controller {
          this.renderAqiSummary(aqi);
 
          this.renderHourly(hourly, currentHour);
+         this.render7DayForecast(daily);
 
          this.realFeelTarget.textContent = Math.round(current.apparent_temperature);
          this.aqiValueTarget.textContent = aqi !== null ? aqi : "--";
