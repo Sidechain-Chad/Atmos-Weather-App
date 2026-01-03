@@ -393,6 +393,41 @@ export default class extends Controller {
          }
     }
 
+    render7DayForecast(daily) {
+        this.dailyContainerTarget.innerHTML = '';
+
+        // Start from i = 1 (Tomorrow)
+        for (let i = 1; i < daily.time.length; i++) {
+            const dateStr = daily.time[i];
+            const max = Math.round(daily.temperature_2m_max[i]);
+            const min = Math.round(daily.temperature_2m_min[i]);
+            const code = daily.weather_code[i];
+
+            const dateObj = new Date(dateStr);
+            const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
+            const dateNum = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+            const iconClass = this.getIconClass(code, true);
+
+            const div = document.createElement('div');
+            div.className = 'daily-row'; // Matches CSS
+            div.innerHTML = `
+                <div class="daily-date">
+                    <span class="day-name">${dayName}</span>
+                    <span class="day-num">${dateNum}</span>
+                </div>
+                <div class="daily-icon">
+                    <i class="${iconClass}"></i>
+                </div>
+                <div class="daily-temps">
+                    <span class="temp-low">${min}°</span>
+                    <span class="temp-high">${max}°</span>
+                </div>
+            `;
+            this.dailyContainerTarget.appendChild(div);
+        }
+    }
+
     initCanvas() {
         this.ctx = this.canvasTarget.getContext('2d');
         this.resizeCanvas();
