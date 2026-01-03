@@ -13,10 +13,10 @@
         <div class="glass-panel text-center">
             <form data-action="submit->weather#search input->weather#handleInput" class="search-box">
                 <input type="text"
-                      data-weather-target="cityInput"
-                      class="form-control"
-                      placeholder="Search city..."
-                      autocomplete="off"> <span class="loader" data-weather-target="spinner"></span>
+                       data-weather-target="cityInput"
+                       class="form-control"
+                       placeholder="Search city..."
+                       autocomplete="off"> <span class="loader" data-weather-target="spinner"></span>
 
                 <div data-weather-target="searchResults" class="search-results"></div>
             </form>
@@ -54,7 +54,7 @@
 
                 <div class="hourly-wrapper">
                     <div class="hourly-container" data-weather-target="hourlyContainer">
-                        </div>
+                    </div>
                 </div>
 
                 <div class="summary-grid">
@@ -81,6 +81,27 @@
                 </div>
 
                 <div class="details-wrapper" data-weather-target="detailsWrapper">
+
+                    <div class="detailed-grid">
+                        <div style="grid-column: span 2; margin-bottom: 15px; font-size: 0.9rem; opacity: 0.5; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px;">Today's Forecast</div>
+                        <div class="detail-row">
+                            <span class="detail-label"><i class="ph ph-sun"></i> Day High</span>
+                            <span class="detail-value"><span data-weather-target="dayHigh">--</span>°</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label"><i class="ph ph-moon"></i> Night Low</span>
+                            <span class="detail-value"><span data-weather-target="nightLow">--</span>°</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label"><i class="ph ph-cloud-rain"></i> Rain Prob.</span>
+                            <span class="detail-value"><span data-weather-target="precipProb">--</span>%</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label"><i class="ph ph-ruler"></i> Precipitation</span>
+                            <span class="detail-value"><span data-weather-target="precipSum">--</span> mm</span>
+                        </div>
+                    </div>
+
                     <div class="detailed-grid">
                         <div style="grid-column: span 2; margin-bottom: 15px; font-size: 0.9rem; opacity: 0.5; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px;">Current Conditions</div>
                         <div class="detail-row">
@@ -121,25 +142,6 @@
                         </div>
                     </div>
 
-                    <div class="detailed-grid">
-                        <div style="grid-column: span 2; margin-bottom: 15px; font-size: 0.9rem; opacity: 0.5; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px;">Today's Forecast</div>
-                        <div class="detail-row">
-                            <span class="detail-label"><i class="ph ph-sun"></i> Day High</span>
-                            <span class="detail-value"><span data-weather-target="dayHigh">--</span>°</span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="detail-label"><i class="ph ph-moon"></i> Night Low</span>
-                            <span class="detail-value"><span data-weather-target="nightLow">--</span>°</span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="detail-label"><i class="ph ph-cloud-rain"></i> Rain Prob.</span>
-                            <span class="detail-value"><span data-weather-target="precipProb">--</span>%</span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="detail-label"><i class="ph ph-ruler"></i> Precipitation</span>
-                            <span class="detail-value"><span data-weather-target="precipSum">--</span> mm</span>
-                        </div>
-                    </div>
                 </div>
             </div>
 
