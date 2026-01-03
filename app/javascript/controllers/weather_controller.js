@@ -96,7 +96,7 @@ export default class extends Controller {
         "dateDisplay", "windSpeed", "humidity", "aqiSummary", "detailsWrapper",
         "caretIcon", "realFeel", "aqiValue", "uvIndex", "visibility",
         "windGusts", "windDir", "dewPoint", "cloudCover", "pressure",
-        "dayHigh", "nightLow", "precipProb", "precipSum", "hourlyContainer"
+        "dayHigh", "nightLow", "precipProb", "precipSum", "hourlyContainer", "dailyContainer"
     ]
 
     connect() {
@@ -300,7 +300,7 @@ export default class extends Controller {
         this.hideError();
 
         try {
-            const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,rain,showers,snowfall,weather_code,cloud_cover,pressure_msl,surface_pressure,wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,dew_point_2m,uv_index&hourly=temperature_2m,weather_code,is_day&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,uv_index_max,precipitation_sum,precipitation_probability_max,wind_speed_10m_max&timezone=auto&forecast_days=1`;
+            const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,rain,showers,snowfall,weather_code,cloud_cover,pressure_msl,surface_pressure,wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,dew_point_2m,uv_index&hourly=temperature_2m,weather_code,is_day&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,uv_index_max,precipitation_sum,precipitation_probability_max,wind_speed_10m_max&timezone=auto&forecast_days=8`;
             const aqiUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${latitude}&longitude=${longitude}&current=us_aqi`;
 
             const [weatherRes, aqiRes] = await Promise.all([fetch(weatherUrl), fetch(aqiUrl)]);
@@ -345,6 +345,7 @@ export default class extends Controller {
          this.renderAqiSummary(aqi);
 
          this.renderHourly(hourly, currentHour);
+         this.render7DayForecast(daily);
 
          this.realFeelTarget.textContent = Math.round(current.apparent_temperature);
          this.aqiValueTarget.textContent = aqi !== null ? aqi : "--";
@@ -391,6 +392,43 @@ export default class extends Controller {
              `;
              this.hourlyContainerTarget.appendChild(div);
          }
+    }
+
+    render7DayForecast(daily) {
+        this.dailyContainerTarget.innerHTML = '';
+
+        // Start from i = 1 (Tomorrow) because i = 0 is Today (already shown)
+        for (let i = 1; i < daily.time.length; i++) {
+            const dateStr = daily.time[i];
+            const max = Math.round(daily.temperature_2m_max[i]);
+            const min = Math.round(daily.temperature_2m_min[i]);
+            const code = daily.weather_code[i];
+
+            // Create Date Object
+            const dateObj = new Date(dateStr);
+            const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'short' }); // "Mon", "Tue"
+            const dateNum = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); // "Jan 12"
+
+            // Get Icon
+            const iconClass = this.getIconClass(code, true); // Assume day icon for forecasts
+
+            const div = document.createElement('div');
+            div.className = 'daily-row';
+            div.innerHTML = `
+                <div class="daily-date">
+                    <span class="day-name">${dayName}</span>
+                    <span class="day-num">${dateNum}</span>
+                </div>
+                <div class="daily-icon">
+                    <i class="${iconClass}"></i>
+                </div>
+                <div class="daily-temps">
+                    <span class="temp-max">${max}°</span>
+                    <span class="temp-min">${min}°</span>
+                </div>
+            `;
+            this.dailyContainerTarget.appendChild(div);
+        }
     }
 
     initCanvas() {
