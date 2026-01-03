@@ -442,6 +442,73 @@ body.theme-day.weather-clear .form-control:focus {
     border-color: rgba(255, 215, 0, 0.4);
 }
 
+/* --- 7-DAY FORECAST LIST --- */
+.daily-forecast-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0; /* No gap because we use padding/border */
+}
+
+.daily-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    transition: background 0.2s;
+}
+
+.daily-row:last-child {
+    border-bottom: none;
+}
+
+.daily-row:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+}
+
+/* 1. Date Column (Left) */
+.daily-date {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+    width: 80px;
+}
+.day-name {
+    font-weight: 600;
+    font-size: 1rem;
+}
+.day-num {
+    font-size: 0.75rem;
+    opacity: 0.6;
+}
+
+/* 2. Icon Column (Center) */
+.daily-icon {
+    flex-grow: 1;
+    text-align: center;
+    font-size: 1.5rem;
+}
+/* Note: These icons will automatically pick up the COLORS from your global CSS! */
+
+/* 3. Temps Column (Right) */
+.daily-temps {
+    width: 80px;
+    text-align: right;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+.temp-max {
+    font-weight: 700;
+    font-size: 1.1rem;
+}
+.temp-min {
+    font-weight: 400;
+    opacity: 0.6;
+    font-size: 1rem;
+}
+
 @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
 /* --- SKELETON LOADER --- */
