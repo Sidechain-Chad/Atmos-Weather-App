@@ -337,11 +337,13 @@ i.ph-compass { color: #ecf0f1; opacity: 0.8; }
     }
 
     .daily-forecast-scroll {
-        /* STRICT HEIGHT LIMIT */
+        flex-grow: 0;
         height: auto;
-        max-height: 160px; /* Shows exactly ~3 rows */
 
-        /* ENABLE INTERNAL SCROLL */
+        /* CHANGE THIS: Height of approx 1 row */
+        max-height: 60px;
+
+        /* Enable internal scrolling */
         overflow-y: auto;
 
         /* Visuals */
@@ -349,7 +351,7 @@ i.ph-compass { color: #ecf0f1; opacity: 0.8; }
         padding: 0 10px;
         border-radius: 15px;
 
-        /* Smooth Mobile Scrolling */
+        /* Critical for smooth dragging on iPhone */
         -webkit-overflow-scrolling: touch;
     }
 
