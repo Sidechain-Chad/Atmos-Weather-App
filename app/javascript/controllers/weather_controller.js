@@ -7,7 +7,7 @@ const CONFIG = {
     interactionRadius: 150,
 };
 
-// Particle Class Definition (Unchanged)
+// Particle Class Definition
 class Mushi {
     constructor(canvasWidth, canvasHeight, theme, weatherType, x = null, y = null) {
         this.canvasWidth = canvasWidth;
@@ -49,11 +49,11 @@ class Mushi {
         if (mouseX != null) {
             const dx = mouseX - this.x;
             const dy = mouseY - this.y;
-            const dist = Math.sqrt(dx*dx + dy*dy);
+            const dist = Math.sqrt(dx * dx + dy * dy);
             if (dist < CONFIG.interactionRadius) {
                 const force = (CONFIG.interactionRadius - dist) / CONFIG.interactionRadius;
-                this.x -= (dx/dist) * force * 8;
-                this.y -= (dy/dist) * force * 8;
+                this.x -= (dx / dist) * force * 8;
+                this.y -= (dy / dist) * force * 8;
             }
         }
 
@@ -88,7 +88,6 @@ class Mushi {
 }
 
 export default class extends Controller {
-    // FIXED: Cleaned up duplicate targets list
     static targets = [
         "canvas", "cityInput", "spinner", "result", "skeleton",
         "errorAlert", "errorMsg", "searchResults",
@@ -99,7 +98,7 @@ export default class extends Controller {
         "dayHigh", "nightLow", "precipProb", "precipSum", "hourlyContainer", "dailyContainer"
     ]
 
-  connect() {
+    connect() {
         this.appState = {
             theme: 'night',
             weather: 'snow',
@@ -111,86 +110,56 @@ export default class extends Controller {
         this.initCanvas();
         this.animate();
         this.initDragScroll();
-
-        // Try to get location on load
         this.getUserLocation();
 
-        // 1. FIX: Store the click handler so we can remove it
+        // --- DEFINE HANDLERS (Stored so we can remove them) ---
+
+        // Click Outside
         this.clickOutsideHandler = (e) => {
             if (!this.element.contains(e.target)) {
                 this.searchResultsTarget.classList.remove('active');
             }
         };
-        document.addEventListener('click', this.clickOutsideHandler);
 
-        // 2. FIX: Store the resize handler so we can remove it
-        // We bind it here once, and store the reference
+        // Resize (High Performance)
         this.resizeHandler = this.resizeCanvas.bind(this);
+
+        // Mouse/Touch Interaction
+        this.mouseMoveHandler = (e) => {
+            this.appState.mouse.x = e.x;
+            this.appState.mouse.y = e.y;
+        };
+        this.touchMoveHandler = (e) => {
+            if (e.touches[0]) {
+                this.appState.mouse.x = e.touches[0].clientX;
+                this.appState.mouse.y = e.touches[0].clientY;
+            }
+        };
+        this.mouseOutHandler = () => {
+            this.appState.mouse.x = null;
+            this.appState.mouse.y = null;
+        };
+
+        // --- ADD LISTENERS ---
+        document.addEventListener('click', this.clickOutsideHandler);
         window.addEventListener('resize', this.resizeHandler);
+        window.addEventListener('mousemove', this.mouseMoveHandler);
+        window.addEventListener('touchmove', this.touchMoveHandler);
+        window.addEventListener('mouseout', this.mouseOutHandler);
     }
 
     disconnect() {
-        // 1. FIX: Remove the specific bound function we stored
+        // Remove UI Listeners
+        document.removeEventListener('click', this.clickOutsideHandler);
         window.removeEventListener('resize', this.resizeHandler);
 
-        // 2. Remove the click listener
-        document.removeEventListener('click', this.clickOutsideHandler);
+        // Remove Mouse/Touch Listeners
+        window.removeEventListener('mousemove', this.mouseMoveHandler);
+        window.removeEventListener('touchmove', this.touchMoveHandler);
+        window.removeEventListener('mouseout', this.mouseOutHandler);
 
-        // 3. Stop animation
+        // Stop Animation Loop
         cancelAnimationFrame(this.animationFrame);
-    }
-
-    // --- Geolocation & Smart Search Logic ---
-
-    // NEW: Async handleInput with Debounce
-    async handleInput() {
-        // 1. Clear the previous timer if the user types again quickly
-        clearTimeout(this.searchTimeout);
-
-        // 2. Set a new timer (wait 300ms before running logic)
-        this.searchTimeout = setTimeout(async () => {
-            const query = this.cityInputTarget.value;
-
-            // Hide results if input is too short
-            if (query.length < 3) {
-                this.searchResultsTarget.classList.remove('active');
-                return;
-            }
-
-            try {
-                // Fetch 5 results
-                const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=5&language=en&format=json`);
-                const data = await res.json();
-
-                if (data.results) {
-                    let sortedResults = data.results;
-
-                    // Sort by distance if we have user location
-                    if (this.appState.userLocation) {
-                        sortedResults = data.results.sort((a, b) => {
-                            const distA = this.calculateDistance(
-                                this.appState.userLocation.lat,
-                                this.appState.userLocation.lon,
-                                a.latitude,
-                                a.longitude
-                            );
-                            const distB = this.calculateDistance(
-                                this.appState.userLocation.lat,
-                                this.appState.userLocation.lon,
-                                b.latitude,
-                                b.longitude
-                            );
-                            return distA - distB;
-                        });
-                    }
-                    this.renderSearchResults(sortedResults);
-                } else {
-                    this.searchResultsTarget.classList.remove('active');
-                }
-            } catch (error) {
-                console.error(error);
-            }
-        }, 300); // <-- 300ms delay
     }
 
     // --- Geolocation & Smart Search Logic ---
@@ -202,10 +171,7 @@ export default class extends Controller {
                 (position) => {
                     const lat = position.coords.latitude;
                     const lon = position.coords.longitude;
-
-                    // SAVE LOCATION to AppState for sorting
                     this.appState.userLocation = { lat, lon };
-
                     this.fetchWeatherByCoords(lat, lon);
                 },
                 (error) => {
@@ -218,68 +184,23 @@ export default class extends Controller {
         }
     }
 
-connect() {
-        this.appState = {
-            theme: 'night',
-            weather: 'snow',
-            particles: [],
-            mouse: { x: null, y: null },
-            userLocation: null
-        };
-
-        this.initCanvas();
-        this.animate();
-        this.initDragScroll();
-
-        // Try to get location on load
-        this.getUserLocation();
-
-        // FIX: Store the event handler reference so we can remove it later
-        this.clickOutsideHandler = (e) => {
-            if (!this.element.contains(e.target)) {
-                this.searchResultsTarget.classList.remove('active');
-            }
-        };
-        document.addEventListener('click', this.clickOutsideHandler);
-    }
-
-    disconnect() {
-        // Cleanup window listeners
-        window.removeEventListener('resize', this.resizeCanvas.bind(this));
-
-        // Cleanup the click listener (Memory Leak Fix)
-        document.removeEventListener('click', this.clickOutsideHandler);
-
-        // Stop animation
-        cancelAnimationFrame(this.animationFrame);
-    }
-
-    // --- Geolocation & Smart Search Logic ---
-
-    // NEW: Async handleInput with Debounce
     async handleInput() {
-        // 1. Clear the previous timer if the user types again quickly
         clearTimeout(this.searchTimeout);
 
-        // 2. Set a new timer (wait 300ms before running logic)
         this.searchTimeout = setTimeout(async () => {
             const query = this.cityInputTarget.value;
 
-            // Hide results if input is too short
             if (query.length < 3) {
                 this.searchResultsTarget.classList.remove('active');
                 return;
             }
 
             try {
-                // Fetch 5 results
                 const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=5&language=en&format=json`);
                 const data = await res.json();
 
                 if (data.results) {
                     let sortedResults = data.results;
-
-                    // Sort by distance if we have user location
                     if (this.appState.userLocation) {
                         sortedResults = data.results.sort((a, b) => {
                             const distA = this.calculateDistance(
@@ -304,17 +225,16 @@ connect() {
             } catch (error) {
                 console.error(error);
             }
-        }, 300); // <-- 300ms delay
+        }, 300);
     }
 
-    // Simple Haversine Distance (doesn't need to be perfect, just good for sorting)
     calculateDistance(lat1, lon1, lat2, lon2) {
         const R = 6371; // km
         const dLat = (lat2 - lat1) * Math.PI / 180;
         const dLon = (lon2 - lon1) * Math.PI / 180;
-        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         return R * c;
     }
 
@@ -324,7 +244,6 @@ connect() {
             const div = document.createElement('div');
             div.className = 'search-result-item';
 
-            // Build a readable label (e.g., "Belgravia, South Africa")
             const admin = city.admin1 || city.admin2 || '';
             const country = city.country || '';
             const locationStr = [admin, country].filter(Boolean).join(', ');
@@ -337,8 +256,6 @@ connect() {
             div.onclick = () => {
                 this.cityInputTarget.value = city.name;
                 this.searchResultsTarget.classList.remove('active');
-
-                // FIXED: Changed 'city.country_code' to 'city.country' to get full name
                 this.executeWeatherFetch(city.latitude, city.longitude, city.name, city.country);
             };
             this.searchResultsTarget.appendChild(div);
@@ -347,15 +264,11 @@ connect() {
     }
 
     async fetchWeatherByCoords(lat, lon) {
-        // Reverse Geocode to get a nice name for the UI
         try {
             const revRes = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`);
             const revData = await revRes.json();
             const city = revData.city || revData.locality || "My Location";
-
-            // FIXED: prioritize 'countryName' over 'countryCode'
             const country = revData.countryName || revData.countryCode || "";
-
             this.executeWeatherFetch(lat, lon, city, country);
         } catch (e) {
             console.error("Reverse geocoding failed", e);
@@ -363,18 +276,14 @@ connect() {
         }
     }
 
-    // --- Core Weather Fetching ---
-
     search(event) {
         event.preventDefault();
-        // If they just hit enter, do a basic fetch (will likely pick result #1)
         if (this.cityInputTarget.value) {
             this.fetchWeather(this.cityInputTarget.value);
             this.searchResultsTarget.classList.remove('active');
         }
     }
 
-    // Legacy fetch (by name string)
     async fetchWeather(city) {
         this.showLoading(true);
         this.hideError();
@@ -387,7 +296,6 @@ connect() {
 
             if (!geoData.results?.length) throw new Error("City not found.");
 
-            // Sort this legacy fetch too if we have user location!
             let bestMatch = geoData.results[0];
             if (this.appState.userLocation) {
                 geoData.results.sort((a, b) => {
@@ -400,24 +308,20 @@ connect() {
 
             const { latitude, longitude, name, country } = bestMatch;
             this.executeWeatherFetch(latitude, longitude, name, country);
-
         } catch (error) {
             this.showError(error.message);
             this.showLoading(false);
         }
     }
 
-    // Master Fetcher (Coordinates -> Weather)
     async executeWeatherFetch(latitude, longitude, name, country) {
         this.showLoading(true);
         this.hideError();
 
         try {
-            // CHANGE 'forecast_days=1' TO 'forecast_days=8' AT THE VERY END
             const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,rain,showers,snowfall,weather_code,cloud_cover,pressure_msl,surface_pressure,wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,dew_point_2m,uv_index&hourly=temperature_2m,weather_code,is_day&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,uv_index_max,precipitation_sum,precipitation_probability_max,wind_speed_10m_max&timezone=auto&forecast_days=8`;
-
             const aqiUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${latitude}&longitude=${longitude}&current=us_aqi`;
-            // ...
+
             const [weatherRes, aqiRes] = await Promise.all([fetch(weatherUrl), fetch(aqiUrl)]);
 
             if (!weatherRes.ok) throw new Error("Weather service unavailable.");
@@ -433,52 +337,52 @@ connect() {
         }
     }
 
-    // --- UI & Rendering Logic (Existing) ---
+    // --- UI & Rendering Logic ---
 
     processAllData(city, country, wData, aData, utcOffsetSeconds) {
-         const current = wData.current;
-         const daily = wData.daily;
-         const hourly = wData.hourly;
-         const aqi = aData.current ? aData.current.us_aqi : null;
+        const current = wData.current;
+        const daily = wData.daily;
+        const hourly = wData.hourly;
+        const aqi = aData.current ? aData.current.us_aqi : null;
 
-         const nowUTC = new Date().getTime() + (new Date().getTimezoneOffset() * 60000);
-         const cityTime = new Date(nowUTC + (utcOffsetSeconds * 1000));
-         const currentHour = cityTime.getHours();
+        const nowUTC = new Date().getTime() + (new Date().getTimezoneOffset() * 60000);
+        const cityTime = new Date(nowUTC + (utcOffsetSeconds * 1000));
+        const currentHour = cityTime.getHours();
 
-         this.cityNameTarget.textContent = city;
-         this.countryCodeTarget.textContent = country;
+        this.cityNameTarget.textContent = city;
+        this.countryCodeTarget.textContent = country;
 
-         this.updateDateDisplay(cityTime);
+        this.updateDateDisplay(cityTime);
 
-         this.tempValueTarget.textContent = Math.round(current.temperature_2m);
-         const { desc, type } = this.getWeatherInfo(current.weather_code);
-         this.weatherDescTarget.textContent = desc;
-         this.appState.weather = type;
+        this.tempValueTarget.textContent = Math.round(current.temperature_2m);
+        const { desc, type } = this.getWeatherInfo(current.weather_code);
+        this.weatherDescTarget.textContent = desc;
+        this.appState.weather = type;
 
-         this.windSpeedTarget.textContent = Math.round(current.wind_speed_10m);
-         this.humidityTarget.textContent = current.relative_humidity_2m;
-         this.renderAqiSummary(aqi);
+        this.windSpeedTarget.textContent = Math.round(current.wind_speed_10m);
+        this.humidityTarget.textContent = current.relative_humidity_2m;
+        this.renderAqiSummary(aqi);
 
-         this.renderHourly(hourly, currentHour);
-         this.render7DayForecast(daily);
+        this.renderHourly(hourly, currentHour);
+        this.render7DayForecast(daily);
 
-         this.realFeelTarget.textContent = Math.round(current.apparent_temperature);
-         this.aqiValueTarget.textContent = aqi !== null ? aqi : "--";
-         this.uvIndexTarget.textContent = current.uv_index !== undefined ? current.uv_index : "Low";
-         this.windGustsTarget.textContent = Math.round(current.wind_gusts_10m);
-         this.windDirTarget.textContent = this.getCompassDirection(current.wind_direction_10m);
-         this.dewPointTarget.textContent = Math.round(current.dew_point_2m);
-         this.pressureTarget.textContent = Math.round(current.surface_pressure);
-         if(this.hasCloudCoverTarget) this.cloudCoverTarget.textContent = current.cloud_cover;
-         this.visibilityTarget.textContent = (current.visibility / 1000).toFixed(1);
+        this.realFeelTarget.textContent = Math.round(current.apparent_temperature);
+        this.aqiValueTarget.textContent = aqi !== null ? aqi : "--";
+        this.uvIndexTarget.textContent = current.uv_index !== undefined ? current.uv_index : "Low";
+        this.windGustsTarget.textContent = Math.round(current.wind_gusts_10m);
+        this.windDirTarget.textContent = this.getCompassDirection(current.wind_direction_10m);
+        this.dewPointTarget.textContent = Math.round(current.dew_point_2m);
+        this.pressureTarget.textContent = Math.round(current.surface_pressure);
+        if (this.hasCloudCoverTarget) this.cloudCoverTarget.textContent = current.cloud_cover;
+        this.visibilityTarget.textContent = (current.visibility / 1000).toFixed(1);
 
-         this.dayHighTarget.textContent = Math.round(daily.temperature_2m_max[0]);
-         this.nightLowTarget.textContent = Math.round(daily.temperature_2m_min[0]);
-         this.precipProbTarget.textContent = daily.precipitation_probability_max[0];
-         this.precipSumTarget.textContent = daily.precipitation_sum[0];
+        this.dayHighTarget.textContent = Math.round(daily.temperature_2m_max[0]);
+        this.nightLowTarget.textContent = Math.round(daily.temperature_2m_min[0]);
+        this.precipProbTarget.textContent = daily.precipitation_probability_max[0];
+        this.precipSumTarget.textContent = daily.precipitation_sum[0];
 
-         this.handleTheme(cityTime, daily, current.weather_code);
-         this.resultTarget.style.opacity = 1;
+        this.handleTheme(cityTime, daily, current.weather_code);
+        this.resultTarget.style.opacity = 1;
     }
 
     updateDateDisplay(dateObj) {
@@ -486,33 +390,31 @@ connect() {
     }
 
     renderHourly(hourly, currentHour) {
-         this.hourlyContainerTarget.innerHTML = "";
-         for (let i = currentHour; i <= 23; i++) {
-             if (i >= hourly.time.length) break;
-             const code = hourly.weather_code[i];
-             const temp = Math.round(hourly.temperature_2m[i]);
-             const isDay = hourly.is_day[i];
-             const iconClass = this.getIconClass(code, isDay === 1);
-             let displayTime = `${i}:00`;
-             if (i === currentHour) displayTime = "Now";
+        this.hourlyContainerTarget.innerHTML = "";
+        for (let i = currentHour; i <= 23; i++) {
+            if (i >= hourly.time.length) break;
+            const code = hourly.weather_code[i];
+            const temp = Math.round(hourly.temperature_2m[i]);
+            const isDay = hourly.is_day[i];
+            const iconClass = this.getIconClass(code, isDay === 1);
+            let displayTime = `${i}:00`;
+            if (i === currentHour) displayTime = "Now";
 
-             const div = document.createElement('div');
-             div.className = 'hour-item';
-             if (i === currentHour) div.classList.add('now');
+            const div = document.createElement('div');
+            div.className = 'hour-item';
+            if (i === currentHour) div.classList.add('now');
 
-             div.innerHTML = `
-                 <span class="hour-time">${displayTime}</span>
-                 <i class="hour-icon ${iconClass}"></i>
-                 <span class="hour-temp">${temp}°</span>
-             `;
-             this.hourlyContainerTarget.appendChild(div);
-         }
+            div.innerHTML = `
+                <span class="hour-time">${displayTime}</span>
+                <i class="hour-icon ${iconClass}"></i>
+                <span class="hour-temp">${temp}°</span>
+            `;
+            this.hourlyContainerTarget.appendChild(div);
+        }
     }
 
     render7DayForecast(daily) {
         this.dailyContainerTarget.innerHTML = '';
-
-        // Start from i = 1 (Tomorrow)
         for (let i = 1; i < daily.time.length; i++) {
             const dateStr = daily.time[i];
             const max = Math.round(daily.temperature_2m_max[i]);
@@ -522,11 +424,10 @@ connect() {
             const dateObj = new Date(dateStr);
             const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
             const dateNum = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-
             const iconClass = this.getIconClass(code, true);
 
             const div = document.createElement('div');
-            div.className = 'daily-row'; // Matches CSS
+            div.className = 'daily-row';
             div.innerHTML = `
                 <div class="daily-date">
                     <span class="day-name">${dayName}</span>
@@ -550,23 +451,15 @@ connect() {
         for (let i = 0; i < CONFIG.particleCount; i++) {
             this.appState.particles.push(new Mushi(this.canvasTarget.width, this.canvasTarget.height, this.appState.theme, this.appState.weather));
         }
-        window.addEventListener('resize', this.resizeCanvas.bind(this));
-        window.addEventListener('mousemove', e => { this.appState.mouse.x = e.x; this.appState.mouse.y = e.y; });
-        window.addEventListener('touchmove', e => { if (e.touches[0]) { this.appState.mouse.x = e.touches[0].clientX; this.appState.mouse.y = e.touches[0].clientY; } });
-        window.addEventListener('mouseout', () => { this.appState.mouse.x = null; this.appState.mouse.y = null; });
     }
 
     resizeCanvas() {
         const dpr = window.devicePixelRatio || 1;
         this.canvasTarget.width = window.innerWidth * dpr;
         this.canvasTarget.height = window.innerHeight * dpr;
-
-        // Scale the visual context so your drawing logic (coordinates) doesn't need to change
         this.ctx.scale(dpr, dpr);
-
         this.canvasTarget.style.width = window.innerWidth + 'px';
         this.canvasTarget.style.height = window.innerHeight + 'px';
-
         this.appState.particles.forEach(p => {
             p.canvasWidth = window.innerWidth;
             p.canvasHeight = window.innerHeight;
@@ -660,25 +553,15 @@ connect() {
         this.spinnerTarget.style.display = isLoading ? 'inline-block' : 'none';
 
         if (isLoading) {
-            // --- SEARCH START (The "Exit") ---
-
-            // 1. Close details immediately (prevents height snapping later)
             this.detailsWrapperTarget.classList.remove('open');
             this.caretIconTarget.classList.replace('ph-caret-up', 'ph-caret-down');
-
-            // 2. Slow Fade Out of Old Result (0.4s)
-            // This extra time allows the user to register the change
             this.resultTarget.style.transition = 'opacity 0.4s ease';
             this.resultTarget.style.opacity = '0';
 
-            // 3. Wait 400ms (matching the fade above) before showing Skeleton
             setTimeout(() => {
                 this.resultTarget.style.display = 'none';
-
                 this.skeletonTarget.style.display = 'flex';
                 this.skeletonTarget.style.opacity = '0';
-
-                // Fade in Skeleton
                 requestAnimationFrame(() => {
                     this.skeletonTarget.style.transition = 'opacity 0.4s ease';
                     this.skeletonTarget.style.opacity = '0.7';
@@ -686,20 +569,13 @@ connect() {
             }, 400);
 
         } else {
-            // --- DATA RECEIVED (The "Entrance") ---
-
-            // 1. Slow Fade Out of Skeleton (0.4s)
             this.skeletonTarget.style.transition = 'opacity 0.4s ease';
             this.skeletonTarget.style.opacity = '0';
 
-            // 2. Wait 400ms, then swap to New Result
             setTimeout(() => {
                 this.skeletonTarget.style.display = 'none';
-
                 this.resultTarget.style.display = 'flex';
                 this.resultTarget.style.opacity = '0';
-
-                // 3. Very Slow, Premium Fade In of New Data (0.8s)
                 requestAnimationFrame(() => {
                     this.resultTarget.style.transition = 'opacity 0.8s ease';
                     this.resultTarget.style.opacity = '1';
