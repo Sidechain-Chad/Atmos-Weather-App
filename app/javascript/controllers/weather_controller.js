@@ -110,9 +110,9 @@ export default class extends Controller {
         this.initCanvas();
         this.animate();
 
-        // Init BOTH scroll physics engines
-        this.initHourlyScroll(); // Horizontal
-        this.initDailyScroll();  // Vertical (NEW)
+        // --- INIT SCROLL PHYSICS ---
+        this.initHourlyScroll(); // Horizontal (X-Axis)
+        this.initDailyScroll();  // Vertical (Y-Axis)
 
         this.getUserLocation();
 
@@ -333,7 +333,8 @@ export default class extends Controller {
             const weatherData = await weatherRes.json();
             const aqiData = await aqiRes.json();
 
-            this.processAllData(name, country, weatherData, aqiData, weatherData.utc_offset_seconds);
+            // Pass Lat/Lon for distance calculation
+            this.processAllData(name, country, weatherData, aqiData, weatherData.utc_offset_seconds, latitude, longitude);
         } catch (error) {
             this.showError(error.message);
         } finally {
@@ -343,7 +344,7 @@ export default class extends Controller {
 
     // --- UI & Rendering Logic ---
 
-    processAllData(city, country, wData, aData, utcOffsetSeconds) {
+    processAllData(city, country, wData, aData, utcOffsetSeconds, targetLat, targetLon) {
         const current = wData.current;
         const daily = wData.daily;
         const hourly = wData.hourly;
@@ -352,6 +353,18 @@ export default class extends Controller {
         const nowUTC = new Date().getTime() + (new Date().getTimezoneOffset() * 60000);
         const cityTime = new Date(nowUTC + (utcOffsetSeconds * 1000));
         const currentHour = cityTime.getHours();
+
+        // Check if this is "My Location" (within 20km)
+        let isMyLocation = false;
+        if (this.appState.userLocation) {
+            const dist = this.calculateDistance(
+                this.appState.userLocation.lat,
+                this.appState.userLocation.lon,
+                targetLat,
+                targetLon
+            );
+            if (dist < 20) isMyLocation = true;
+        }
 
         this.cityNameTarget.textContent = city;
         this.countryCodeTarget.textContent = country;
@@ -367,7 +380,9 @@ export default class extends Controller {
         this.humidityTarget.textContent = current.relative_humidity_2m;
         this.renderAqiSummary(aqi);
 
-        this.renderHourly(hourly, currentHour);
+        // Render Hourly with Location Flag
+        this.renderHourly(hourly, currentHour, isMyLocation);
+
         this.render7DayForecast(daily);
 
         this.realFeelTarget.textContent = Math.round(current.apparent_temperature);
@@ -386,7 +401,7 @@ export default class extends Controller {
         this.precipSumTarget.textContent = daily.precipitation_sum[0];
 
         this.handleTheme(cityTime, daily, current.weather_code);
-        this.resultTarget.style.display = 'block'; // Ensure vertical stacking
+        this.resultTarget.style.display = 'block'; // Ensure correct vertical stacking
         this.resultTarget.style.opacity = 1;
     }
 
@@ -394,20 +409,33 @@ export default class extends Controller {
         this.dateDisplayTarget.textContent = dateObj.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' });
     }
 
-    renderHourly(hourly, currentHour) {
+    renderHourly(hourly, currentHour, isMyLocation) {
         this.hourlyContainerTarget.innerHTML = "";
-        for (let i = currentHour; i <= 23; i++) {
-            if (i >= hourly.time.length) break;
-            const code = hourly.weather_code[i];
-            const temp = Math.round(hourly.temperature_2m[i]);
-            const isDay = hourly.is_day[i];
+
+        // Loop 24 times to show the next 24 hours continuously
+        for (let i = 0; i < 24; i++) {
+            const dataIndex = currentHour + i;
+            if (dataIndex >= hourly.time.length) break;
+
+            const code = hourly.weather_code[dataIndex];
+            const temp = Math.round(hourly.temperature_2m[dataIndex]);
+            const isDay = hourly.is_day[dataIndex];
+
+            // Handle Midnight Rollover (0-23)
+            const displayHourNum = (currentHour + i) % 24;
             const iconClass = this.getIconClass(code, isDay === 1);
-            let displayTime = `${i}:00`;
-            if (i === currentHour) displayTime = "Now";
+
+            // Logic: Only show "Now" if it is YOUR location
+            let displayTime = `${displayHourNum}:00`;
+            if (i === 0 && isMyLocation) {
+                displayTime = "Now";
+            }
 
             const div = document.createElement('div');
             div.className = 'hour-item';
-            if (i === currentHour) div.classList.add('now');
+
+            // Highlight current hour visually
+            if (i === 0) div.classList.add('now');
 
             div.innerHTML = `
                 <span class="hour-time">${displayTime}</span>
@@ -618,7 +646,7 @@ export default class extends Controller {
         }
     }
 
-    // --- SCROLL PHYSICS (Hourly - Horizontal) ---
+    // --- PHYSICS: HOURLY (Horizontal X-Axis) ---
     initHourlyScroll() {
         const slider = this.hourlyContainerTarget;
         let isDown = false;
@@ -668,7 +696,7 @@ export default class extends Controller {
         requestAnimationFrame(step);
     }
 
-    // --- SCROLL PHYSICS (Daily - Vertical) - NEW ---
+    // --- PHYSICS: DAILY (Vertical Y-Axis) ---
     initDailyScroll() {
         const slider = this.dailyContainerTarget;
         let isDown = false;
@@ -700,7 +728,7 @@ export default class extends Controller {
             if (!isDown) return;
             e.preventDefault();
             const y = e.pageY - slider.offsetTop;
-            const walk = (y - startY) * 1.5;
+            const walk = (y - startY) * 1.5; // Drag Multiplier
             const prevScrollTop = slider.scrollTop;
             slider.scrollTop = scrollTop - walk;
             velY = slider.scrollTop - prevScrollTop;
