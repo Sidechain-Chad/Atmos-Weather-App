@@ -99,13 +99,13 @@ export default class extends Controller {
         "dayHigh", "nightLow", "precipProb", "precipSum", "hourlyContainer", "dailyContainer"
     ]
 
-    connect() {
+  connect() {
         this.appState = {
             theme: 'night',
             weather: 'snow',
             particles: [],
             mouse: { x: null, y: null },
-            userLocation: null // Store GPS here
+            userLocation: null
         };
 
         this.initCanvas();
@@ -115,17 +115,82 @@ export default class extends Controller {
         // Try to get location on load
         this.getUserLocation();
 
-        // Close dropdown when clicking outside
-        document.addEventListener('click', (e) => {
+        // 1. FIX: Store the click handler so we can remove it
+        this.clickOutsideHandler = (e) => {
             if (!this.element.contains(e.target)) {
                 this.searchResultsTarget.classList.remove('active');
             }
-        });
+        };
+        document.addEventListener('click', this.clickOutsideHandler);
+
+        // 2. FIX: Store the resize handler so we can remove it
+        // We bind it here once, and store the reference
+        this.resizeHandler = this.resizeCanvas.bind(this);
+        window.addEventListener('resize', this.resizeHandler);
     }
 
     disconnect() {
-        window.removeEventListener('resize', this.resizeCanvas.bind(this));
+        // 1. FIX: Remove the specific bound function we stored
+        window.removeEventListener('resize', this.resizeHandler);
+
+        // 2. Remove the click listener
+        document.removeEventListener('click', this.clickOutsideHandler);
+
+        // 3. Stop animation
         cancelAnimationFrame(this.animationFrame);
+    }
+
+    // --- Geolocation & Smart Search Logic ---
+
+    // NEW: Async handleInput with Debounce
+    async handleInput() {
+        // 1. Clear the previous timer if the user types again quickly
+        clearTimeout(this.searchTimeout);
+
+        // 2. Set a new timer (wait 300ms before running logic)
+        this.searchTimeout = setTimeout(async () => {
+            const query = this.cityInputTarget.value;
+
+            // Hide results if input is too short
+            if (query.length < 3) {
+                this.searchResultsTarget.classList.remove('active');
+                return;
+            }
+
+            try {
+                // Fetch 5 results
+                const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=5&language=en&format=json`);
+                const data = await res.json();
+
+                if (data.results) {
+                    let sortedResults = data.results;
+
+                    // Sort by distance if we have user location
+                    if (this.appState.userLocation) {
+                        sortedResults = data.results.sort((a, b) => {
+                            const distA = this.calculateDistance(
+                                this.appState.userLocation.lat,
+                                this.appState.userLocation.lon,
+                                a.latitude,
+                                a.longitude
+                            );
+                            const distB = this.calculateDistance(
+                                this.appState.userLocation.lat,
+                                this.appState.userLocation.lon,
+                                b.latitude,
+                                b.longitude
+                            );
+                            return distA - distB;
+                        });
+                    }
+                    this.renderSearchResults(sortedResults);
+                } else {
+                    this.searchResultsTarget.classList.remove('active');
+                }
+            } catch (error) {
+                console.error(error);
+            }
+        }, 300); // <-- 300ms delay
     }
 
     // --- Geolocation & Smart Search Logic ---
@@ -153,45 +218,93 @@ export default class extends Controller {
         }
     }
 
-    async handleInput() {
-        const query = this.cityInputTarget.value;
-        if (query.length < 3) {
-            this.searchResultsTarget.classList.remove('active');
-            return;
-        }
+connect() {
+        this.appState = {
+            theme: 'night',
+            weather: 'snow',
+            particles: [],
+            mouse: { x: null, y: null },
+            userLocation: null
+        };
 
-        try {
-            // Fetch 5 results (generic)
-            const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=5&language=en&format=json`);
-            const data = await res.json();
+        this.initCanvas();
+        this.animate();
+        this.initDragScroll();
 
-            if (data.results) {
-                // SORTING MAGIC: Re-order based on distance from user
-                let sortedResults = data.results;
-                if (this.appState.userLocation) {
-                    sortedResults = data.results.sort((a, b) => {
-                        const distA = this.calculateDistance(
-                            this.appState.userLocation.lat,
-                            this.appState.userLocation.lon,
-                            a.latitude,
-                            a.longitude
-                        );
-                        const distB = this.calculateDistance(
-                            this.appState.userLocation.lat,
-                            this.appState.userLocation.lon,
-                            b.latitude,
-                            b.longitude
-                        );
-                        return distA - distB; // Closest first
-                    });
-                }
-                this.renderSearchResults(sortedResults);
-            } else {
+        // Try to get location on load
+        this.getUserLocation();
+
+        // FIX: Store the event handler reference so we can remove it later
+        this.clickOutsideHandler = (e) => {
+            if (!this.element.contains(e.target)) {
                 this.searchResultsTarget.classList.remove('active');
             }
-        } catch (error) {
-            console.error(error);
-        }
+        };
+        document.addEventListener('click', this.clickOutsideHandler);
+    }
+
+    disconnect() {
+        // Cleanup window listeners
+        window.removeEventListener('resize', this.resizeCanvas.bind(this));
+
+        // Cleanup the click listener (Memory Leak Fix)
+        document.removeEventListener('click', this.clickOutsideHandler);
+
+        // Stop animation
+        cancelAnimationFrame(this.animationFrame);
+    }
+
+    // --- Geolocation & Smart Search Logic ---
+
+    // NEW: Async handleInput with Debounce
+    async handleInput() {
+        // 1. Clear the previous timer if the user types again quickly
+        clearTimeout(this.searchTimeout);
+
+        // 2. Set a new timer (wait 300ms before running logic)
+        this.searchTimeout = setTimeout(async () => {
+            const query = this.cityInputTarget.value;
+
+            // Hide results if input is too short
+            if (query.length < 3) {
+                this.searchResultsTarget.classList.remove('active');
+                return;
+            }
+
+            try {
+                // Fetch 5 results
+                const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=5&language=en&format=json`);
+                const data = await res.json();
+
+                if (data.results) {
+                    let sortedResults = data.results;
+
+                    // Sort by distance if we have user location
+                    if (this.appState.userLocation) {
+                        sortedResults = data.results.sort((a, b) => {
+                            const distA = this.calculateDistance(
+                                this.appState.userLocation.lat,
+                                this.appState.userLocation.lon,
+                                a.latitude,
+                                a.longitude
+                            );
+                            const distB = this.calculateDistance(
+                                this.appState.userLocation.lat,
+                                this.appState.userLocation.lon,
+                                b.latitude,
+                                b.longitude
+                            );
+                            return distA - distB;
+                        });
+                    }
+                    this.renderSearchResults(sortedResults);
+                } else {
+                    this.searchResultsTarget.classList.remove('active');
+                }
+            } catch (error) {
+                console.error(error);
+            }
+        }, 300); // <-- 300ms delay
     }
 
     // Simple Haversine Distance (doesn't need to be perfect, just good for sorting)
@@ -295,12 +408,11 @@ export default class extends Controller {
     }
 
     // Master Fetcher (Coordinates -> Weather)
-// Master Fetcher (Coordinates -> Weather)
-async executeWeatherFetch(latitude, longitude, name, country) {
-    this.showLoading(true);
-    this.hideError();
+    async executeWeatherFetch(latitude, longitude, name, country) {
+        this.showLoading(true);
+        this.hideError();
 
-    try {
+        try {
             // CHANGE 'forecast_days=1' TO 'forecast_days=8' AT THE VERY END
             const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,rain,showers,snowfall,weather_code,cloud_cover,pressure_msl,surface_pressure,wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,dew_point_2m,uv_index&hourly=temperature_2m,weather_code,is_day&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,uv_index_max,precipitation_sum,precipitation_probability_max,wind_speed_10m_max&timezone=auto&forecast_days=8`;
 
@@ -445,9 +557,20 @@ async executeWeatherFetch(latitude, longitude, name, country) {
     }
 
     resizeCanvas() {
-        this.canvasTarget.width = window.innerWidth;
-        this.canvasTarget.height = window.innerHeight;
-        this.appState.particles.forEach(p => { p.canvasWidth = window.innerWidth; p.canvasHeight = window.innerHeight; });
+        const dpr = window.devicePixelRatio || 1;
+        this.canvasTarget.width = window.innerWidth * dpr;
+        this.canvasTarget.height = window.innerHeight * dpr;
+
+        // Scale the visual context so your drawing logic (coordinates) doesn't need to change
+        this.ctx.scale(dpr, dpr);
+
+        this.canvasTarget.style.width = window.innerWidth + 'px';
+        this.canvasTarget.style.height = window.innerHeight + 'px';
+
+        this.appState.particles.forEach(p => {
+            p.canvasWidth = window.innerWidth;
+            p.canvasHeight = window.innerHeight;
+        });
     }
 
     animate() {
