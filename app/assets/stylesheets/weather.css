@@ -267,6 +267,15 @@ i.ph-gauge { color: #FDFD96; }
 i.ph-compass { color: #ecf0f1; opacity: 0.8; }
 .hourly-container i { color: white !important; filter: none !important; text-shadow: none !important; opacity: 1; }
 
+/* Add this to your CSS file */
+.daily-forecast-scroll.active {
+    cursor: grabbing;
+    scroll-behavior: auto !important;
+}
+.daily-forecast-scroll {
+    cursor: grab;
+}
+
 /* --- MOBILE OPTIMIZATIONS (The "Compact" Fix) --- */
 @media (max-width: 480px) {
     /* 1. CONTAINER: Force full screen height */

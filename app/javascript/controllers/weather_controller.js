@@ -109,7 +109,11 @@ export default class extends Controller {
 
         this.initCanvas();
         this.animate();
-        this.initDragScroll();
+
+        // Init BOTH scroll physics engines
+        this.initHourlyScroll(); // Horizontal
+        this.initDailyScroll();  // Vertical (NEW)
+
         this.getUserLocation();
 
         // --- DEFINE HANDLERS (Stored so we can remove them) ---
@@ -382,6 +386,7 @@ export default class extends Controller {
         this.precipSumTarget.textContent = daily.precipitation_sum[0];
 
         this.handleTheme(cityTime, daily, current.weather_code);
+        this.resultTarget.style.display = 'block'; // Ensure vertical stacking
         this.resultTarget.style.opacity = 1;
     }
 
@@ -554,7 +559,6 @@ export default class extends Controller {
         this.spinnerTarget.style.display = isLoading ? 'inline-block' : 'none';
 
         if (isLoading) {
-            // HIDE RESULT (Search Start)
             this.detailsWrapperTarget.classList.remove('open');
             this.caretIconTarget.classList.replace('ph-caret-up', 'ph-caret-down');
             this.resultTarget.style.transition = 'opacity 0.4s ease';
@@ -562,11 +566,8 @@ export default class extends Controller {
 
             setTimeout(() => {
                 this.resultTarget.style.display = 'none';
-
-                // Skeleton uses flex-column inline, so 'flex' is fine here
                 this.skeletonTarget.style.display = 'flex';
                 this.skeletonTarget.style.opacity = '0';
-
                 requestAnimationFrame(() => {
                     this.skeletonTarget.style.transition = 'opacity 0.4s ease';
                     this.skeletonTarget.style.opacity = '0.7';
@@ -574,16 +575,12 @@ export default class extends Controller {
             }, 400);
 
         } else {
-            // SHOW RESULT (Data Received)
             this.skeletonTarget.style.transition = 'opacity 0.4s ease';
             this.skeletonTarget.style.opacity = '0';
 
             setTimeout(() => {
                 this.skeletonTarget.style.display = 'none';
-
-                // FIX: Changed from 'flex' to 'block' to prevent horizontal squashing
-                this.resultTarget.style.display = 'block';
-
+                this.resultTarget.style.display = 'block'; // FIXED: block prevents flex squash
                 this.resultTarget.style.opacity = '0';
                 requestAnimationFrame(() => {
                     this.resultTarget.style.transition = 'opacity 0.8s ease';
@@ -621,7 +618,8 @@ export default class extends Controller {
         }
     }
 
-    initDragScroll() {
+    // --- SCROLL PHYSICS (Hourly - Horizontal) ---
+    initHourlyScroll() {
         const slider = this.hourlyContainerTarget;
         let isDown = false;
         let startX;
@@ -645,7 +643,7 @@ export default class extends Controller {
         slider.addEventListener('mouseup', () => {
             isDown = false;
             slider.classList.remove('active');
-            this.beginMomentum(slider, velX);
+            this.beginMomentumX(slider, velX);
         });
 
         slider.addEventListener('mousemove', (e) => {
@@ -659,12 +657,62 @@ export default class extends Controller {
         });
     }
 
-    beginMomentum(slider, velocity) {
+    beginMomentumX(slider, velocity) {
         const decay = 0.92;
         const step = () => {
             if (Math.abs(velocity) < 0.5) return;
             velocity *= decay;
             slider.scrollLeft += velocity;
+            requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+    }
+
+    // --- SCROLL PHYSICS (Daily - Vertical) - NEW ---
+    initDailyScroll() {
+        const slider = this.dailyContainerTarget;
+        let isDown = false;
+        let startY;
+        let scrollTop;
+        let velY = 0;
+        let momentumID;
+
+        slider.addEventListener('mousedown', (e) => {
+            isDown = true;
+            slider.classList.add('active');
+            startY = e.pageY - slider.offsetTop;
+            scrollTop = slider.scrollTop;
+            cancelAnimationFrame(momentumID);
+        });
+
+        slider.addEventListener('mouseleave', () => {
+            isDown = false;
+            slider.classList.remove('active');
+        });
+
+        slider.addEventListener('mouseup', () => {
+            isDown = false;
+            slider.classList.remove('active');
+            this.beginMomentumY(slider, velY);
+        });
+
+        slider.addEventListener('mousemove', (e) => {
+            if (!isDown) return;
+            e.preventDefault();
+            const y = e.pageY - slider.offsetTop;
+            const walk = (y - startY) * 1.5;
+            const prevScrollTop = slider.scrollTop;
+            slider.scrollTop = scrollTop - walk;
+            velY = slider.scrollTop - prevScrollTop;
+        });
+    }
+
+    beginMomentumY(slider, velocity) {
+        const decay = 0.92;
+        const step = () => {
+            if (Math.abs(velocity) < 0.5) return;
+            velocity *= decay;
+            slider.scrollTop += velocity;
             requestAnimationFrame(step);
         };
         requestAnimationFrame(step);
