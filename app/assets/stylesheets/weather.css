@@ -267,48 +267,70 @@ i.ph-gauge { color: #FDFD96; }
 i.ph-compass { color: #ecf0f1; opacity: 0.8; }
 .hourly-container i { color: white !important; filter: none !important; text-shadow: none !important; opacity: 1; }
 
-/* --- MOBILE OPTIMIZATIONS (The "Diet") --- */
+/* --- MOBILE OPTIMIZATIONS (Native App Feel) --- */
 @media (max-width: 480px) {
+    /* 1. CONTAINER: Force full screen height, remove all padding */
     .weather-container {
-        /* Relaxed padding, flex-start helps on very small screens */
-        padding: 5px 0;
+        padding: 0 !important;
+        height: 100dvh;       /* Use dynamic viewport height */
+        max-height: 100dvh;
+        width: 100%;
         justify-content: flex-start;
     }
 
+    /* 2. GLASS PANEL: Remove "Card" look, make it the background */
     .glass-panel {
-        width: 95%;
-        padding: 1.2rem 1rem;
-        border-radius: 25px;
-        /* Ensure it takes up enough height but allows margins */
-        min-height: 90dvh;
-        margin: auto;
+        width: 100% !important;
+        max-width: none !important;
+        height: 100% !important;
+        min-height: 100dvh;
+
+        margin: 0 !important;
+        border-radius: 0 !important; /* Square corners */
+        border: none !important;     /* Remove border */
+
+        /* Layout: Vertical Flexbox */
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start; /* Start from top */
+        padding: 1.5rem 1.2rem;      /* Internal spacing */
     }
 
-    /* 1. Shrink Hero Text */
-    .temp-display { font-size: 4rem; margin-bottom: 0; }
-    .city-name { font-size: 1.4rem; }
-    .date-display { font-size: 0.8rem; margin-bottom: 0; }
-    .badge { font-size: 0.7rem; margin-bottom: 5px; }
-    .lead { font-size: 0.9rem; margin-bottom: 0.5rem; }
+    /* 3. CONTENT SIZING: Shrink big text to fit small screens */
+    .temp-display { font-size: 4.5rem; line-height: 1; margin: 10px 0; }
+    .city-name { font-size: 1.5rem; margin-top: 10px; }
+    .search-box { margin-bottom: 10px; }
 
-    /* 2. Tighten Vertical Gaps */
-    .search-box { margin-bottom: 0.8rem; }
-    .form-control { padding: 8px 15px; font-size: 0.9rem; }
+    /* 4. THE FIX: Make the 7-Day Section FILL the remaining space */
+    .weekly-section {
+        margin-top: auto;        /* Push to bottom if there is space */
+        flex-grow: 1;            /* Grow to fill empty space */
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;        /* Prevent double scrollbars */
+        min-height: 0;           /* Critical for flex scrolling */
+        padding-bottom: 0;
+    }
 
-    .hourly-wrapper { margin: 0.8rem 0; } /* Much smaller margins */
-    .hourly-container { gap: 10px; padding: 5px; }
-    .hour-item { min-width: 50px; height: 75px; }
-    .hour-icon { font-size: 1.3rem; }
-    .hour-temp { font-size: 0.9rem; }
+    /* 5. SCROLL AREA: The actual scrollable list */
+    .daily-forecast-scroll {
+        flex-grow: 1;            /* Fill the weekly-section parent */
+        height: 100%;            /* Force height */
+        max-height: none;        /* Remove desktop limit */
+        overflow-y: auto;        /* Enable scroll inside this box */
 
-    .summary-grid { margin: 0.5rem 0; gap: 5px; }
-    .stat-item i { font-size: 1.1rem; }
-    .stat-item .value { font-size: 0.9rem; }
+        /* Visual Tweaks */
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 15px 15px 0 0; /* Rounded top only */
+        padding: 10px;
 
-    .details-trigger { margin: 0.8rem 0; padding: 5px; }
+        /* Mobile scroll momentum */
+        -webkit-overflow-scrolling: touch;
+    }
 
-    /* 3. Constrain 7-Day List height for Mobile */
-    /* This ensures it doesn't push the top off-screen */
-    .daily-forecast-scroll { max-height: 160px; /* Show ~3.5 rows */ }
-    .daily-row { padding: 8px 5px; }
+    /* Adjust row padding for touch targets */
+    .daily-row { padding: 12px 5px; }
+
+    /* Hide the footer text on small screens if needed to save space */
+    .text-white-50 { display: none; }
 }
