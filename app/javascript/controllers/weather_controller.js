@@ -552,7 +552,7 @@ async executeWeatherFetch(latitude, longitude, name, country) {
             setTimeout(() => {
                 this.resultTarget.style.display = 'none';
 
-                this.skeletonTarget.style.display = 'block';
+                this.skeletonTarget.style.display = 'flex';
                 this.skeletonTarget.style.opacity = '0';
 
                 // Fade in Skeleton
@@ -573,7 +573,7 @@ async executeWeatherFetch(latitude, longitude, name, country) {
             setTimeout(() => {
                 this.skeletonTarget.style.display = 'none';
 
-                this.resultTarget.style.display = 'block';
+                this.resultTarget.style.display = 'flex';
                 this.resultTarget.style.opacity = '0';
 
                 // 3. Very Slow, Premium Fade In of New Data (0.8s)
