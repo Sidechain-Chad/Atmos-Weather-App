@@ -276,23 +276,26 @@ i.ph-compass { color: #ecf0f1; opacity: 0.8; }
     cursor: grab;
 }
 
-/* --- MOBILE OPTIMIZATIONS (The "Compact" Fix) --- */
+/* --- MOBILE OPTIMIZATIONS (Scrollable App Fix) --- */
 @media (max-width: 480px) {
-    /* 1. CONTAINER: Force full screen height */
+    /* 1. CONTAINER: Keeps the app full height */
     .weather-container {
         padding: 0 !important;
         height: 100dvh;
-        max-height: 100dvh;
         width: 100%;
         justify-content: flex-start;
     }
 
-    /* 2. GLASS PANEL: Edge-to-edge background */
+    /* 2. GLASS PANEL: Allow Vertical Scrolling */
     .glass-panel {
         width: 100% !important;
         max-width: none !important;
-        height: 100% !important;
-        min-height: 100dvh;
+        height: 100dvh !important; /* Fill screen */
+
+        /* THE CRITICAL FIX: Allow scrolling when content expands */
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch; /* Smooth iOS scrolling */
+
         margin: 0 !important;
         border-radius: 0 !important;
         border: none !important;
@@ -300,67 +303,63 @@ i.ph-compass { color: #ecf0f1; opacity: 0.8; }
         display: flex;
         flex-direction: column;
         justify-content: flex-start;
-        padding: 1rem; /* Reduced padding */
+        padding: 1rem 1rem 40px 1rem; /* Extra bottom padding for scroll space */
     }
 
-    /* 3. TOP CONTENT DIET (The Fix) */
-
-    /* Shrink the huge temperature text */
+    /* 3. TOP CONTENT: Keep it compact */
     .temp-display {
-        font-size: 3.5rem; /* Reduced from 4.5rem */
+        font-size: 3.5rem;
         line-height: 1;
         margin: 5px 0;
     }
-
-    /* Tighten spacing */
     .city-name { font-size: 1.3rem; margin-top: 5px; }
     .date-display { font-size: 0.8rem; margin-bottom: 2px; }
     .lead { font-size: 0.9rem; margin-bottom: 0.2rem; }
     .search-box { margin-bottom: 5px; }
 
-    /* COMPACT HOURLY SECTION */
+    /* Hourly Section */
     .hourly-wrapper {
         margin: 10px 0;
         min-height: 70px;
+        flex-shrink: 0; /* Prevent collapsing */
     }
-
-    /* Shrink the hourly items */
     .hour-item {
         min-width: 45px;
-        height: 65px; /* Reduced from 85px */
+        height: 65px;
     }
     .hour-icon { font-size: 1.2rem; margin: 2px 0; }
     .hour-time, .hour-temp { font-size: 0.75rem; }
 
-    /* TIGHTEN SUMMARY GRID */
-    .summary-grid { margin: 5px 0; gap: 2px; }
+    /* Summary Grid */
+    .summary-grid { margin: 5px 0; gap: 2px; flex-shrink: 0; }
     .stat-item .label { font-size: 0.65rem; }
     .stat-item i { font-size: 1rem; margin-bottom: 0; }
 
-    .details-trigger { margin: 5px 0; padding: 8px; font-size: 0.8rem; }
+    .details-trigger { margin: 5px 0; padding: 5px; font-size: 0.8rem; }
 
-    /* 4. THE FIX: 7-Day Section Fills Remaining Space */
+    /* 4. THE FIX: Protect 7-Day Section */
     .weekly-section {
-        margin-top: auto; /* Push to bottom */
-        flex-grow: 1;
+        margin-top: auto; /* Push to bottom naturally */
+        flex-shrink: 0;   /* CRITICAL: Prevents it from getting squashed */
         display: flex;
         flex-direction: column;
-        overflow: hidden;
-        min-height: 0;
+        /* Remove overflow hidden so the main page scrolls instead */
         padding-bottom: 0;
         border-top: 1px solid rgba(255, 255, 255, 0.15);
     }
 
+    /* Allow the list to just be a list, let the parent scroll handle it */
     .daily-forecast-scroll {
         flex-grow: 1;
-        height: 100%;
+        height: auto;
         max-height: none;
-        overflow-y: auto;
+        overflow: visible; /* Let it expand fully */
         background: rgba(0, 0, 0, 0.2);
-        padding: 0 10px 20px 10px;
-        -webkit-overflow-scrolling: touch;
+        padding: 0 10px;
     }
 
-    .daily-row { padding: 10px 5px; }
+    .daily-row { padding: 12px 5px; }
+
+    /* Hide footer on mobile */
     .text-white-50 { display: none; }
 }
