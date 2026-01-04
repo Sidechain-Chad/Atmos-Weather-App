@@ -3,19 +3,21 @@
 }
 
 body, html {
+    width: 100%;
     min-height: 100%;
     margin: 0;
+    padding: 0;
     overflow-x: hidden;
     font-family: 'Quicksand', sans-serif;
     color: white;
     transition: background var(--transition-speed) ease;
 
-    /* BACKGROUND FIXES */
+    /* 1. FIX WHITE BAR: Set default background to match theme */
+    background-color: #1a2f2b;
     background: linear-gradient(to bottom, #1a2f2b, #2f5a54);
-    background-attachment: fixed;
+    background-attachment: fixed; /* Keeps background static */
 
     /* Touch fixes */
-    overscroll-behavior-y: none;
     -webkit-overflow-scrolling: touch;
 }
 
@@ -27,8 +29,15 @@ body.theme-day     { background: linear-gradient(to bottom, #3b4a48, #8c9e8c); b
 body.theme-day.weather-clear { background: linear-gradient(to bottom, #4a3b2a, #d4af37); background-attachment: fixed; }
 
 /* --- LAYOUT --- */
+/* 2. FIX PARTICLES: Ensure canvas is fixed to the WINDOW, not the page */
 #canvas-container {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1;
+    pointer-events: none; /* Let clicks pass through */
 }
 
 .overlay {
@@ -45,7 +54,6 @@ body.theme-day.weather-clear { background: linear-gradient(to bottom, #4a3b2a, #
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    /* Safe area padding for mobile notches */
     padding-top: calc(10px + env(safe-area-inset-top));
     padding-bottom: calc(10px + env(safe-area-inset-bottom));
 }
@@ -66,7 +74,6 @@ body.theme-day.weather-clear { background: linear-gradient(to bottom, #4a3b2a, #
     box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
     max-width: 500px; width: 95%;
 
-    /* FLEXBOX GLUE: Distributes space so it fills the screen */
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -99,7 +106,7 @@ body.theme-day.weather-clear { background: linear-gradient(to bottom, #4a3b2a, #
 /* --- HOURLY CAROUSEL --- */
 .hourly-wrapper {
     width: 100%;
-    margin: 1.5rem 0; /* Reduced from 2.5rem */
+    margin: 1.5rem 0;
     flex-shrink: 0;
 }
 
@@ -177,13 +184,13 @@ body.theme-day.weather-clear { background: linear-gradient(to bottom, #4a3b2a, #
 .detail-label { font-size: 0.8rem; opacity: 0.7; display: flex; align-items: center; gap: 6px; }
 .detail-value { font-size: 0.9rem; font-weight: 500; }
 
-/* --- 7-DAY VERTICAL SCROLL SECTION (NEW) --- */
+/* --- 7-DAY VERTICAL SCROLL SECTION --- */
 .weekly-section {
-    margin-top: auto; /* Pushes to bottom */
+    margin-top: auto;
     text-align: left;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
     padding-top: 1rem;
-    flex-shrink: 1; /* Allow shrinking if needed */
+    flex-shrink: 1;
     display: flex; flex-direction: column; overflow: hidden;
 }
 .section-title {
@@ -193,9 +200,9 @@ body.theme-day.weather-clear { background: linear-gradient(to bottom, #4a3b2a, #
 }
 
 .daily-forecast-scroll {
-    max-height: 180px; /* Default desktop height */
+    max-height: 180px;
     overflow-y: auto;
-    background: rgba(0, 0, 0, 0.15); /* Inset Look */
+    background: rgba(0, 0, 0, 0.15);
     border-radius: 20px;
     padding: 5px 15px;
     scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.2) transparent;
@@ -267,34 +274,26 @@ i.ph-gauge { color: #FDFD96; }
 i.ph-compass { color: #ecf0f1; opacity: 0.8; }
 .hourly-container i { color: white !important; filter: none !important; text-shadow: none !important; opacity: 1; }
 
-/* Add this to your CSS file */
-.daily-forecast-scroll.active {
-    cursor: grabbing;
-    scroll-behavior: auto !important;
-}
-.daily-forecast-scroll {
-    cursor: grab;
-}
+.daily-forecast-scroll.active { cursor: grabbing; scroll-behavior: auto !important; }
+.daily-forecast-scroll { cursor: grab; }
 
 /* --- MOBILE OPTIMIZATIONS (Scrollable App Fix) --- */
 @media (max-width: 480px) {
-    /* 1. CONTAINER: Keeps the app full height */
+    /* 1. CONTAINER: Switch from Fixed Height to Minimum Height */
     .weather-container {
         padding: 0 !important;
-        height: 100dvh;
+        height: auto !important;      /* Allow growing */
+        min-height: 100dvh;           /* Start at full screen */
         width: 100%;
         justify-content: flex-start;
     }
 
-    /* 2. GLASS PANEL: Allow Vertical Scrolling */
+    /* 2. GLASS PANEL: Allow Page to Grow */
     .glass-panel {
         width: 100% !important;
         max-width: none !important;
-        height: 100dvh !important; /* Fill screen */
-
-        /* THE CRITICAL FIX: Allow scrolling when content expands */
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch; /* Smooth iOS scrolling */
+        height: auto !important;      /* Allow growing */
+        min-height: 100dvh;           /* Cover full screen at minimum */
 
         margin: 0 !important;
         border-radius: 0 !important;
@@ -303,30 +302,19 @@ i.ph-compass { color: #ecf0f1; opacity: 0.8; }
         display: flex;
         flex-direction: column;
         justify-content: flex-start;
-        padding: 1rem 1rem 40px 1rem; /* Extra bottom padding for scroll space */
+        padding: 1rem 1rem 40px 1rem; /* Extra padding at bottom for safe scrolling */
     }
 
     /* 3. TOP CONTENT: Keep it compact */
-    .temp-display {
-        font-size: 3.5rem;
-        line-height: 1;
-        margin: 5px 0;
-    }
+    .temp-display { font-size: 3.5rem; line-height: 1; margin: 5px 0; }
     .city-name { font-size: 1.3rem; margin-top: 5px; }
     .date-display { font-size: 0.8rem; margin-bottom: 2px; }
     .lead { font-size: 0.9rem; margin-bottom: 0.2rem; }
     .search-box { margin-bottom: 5px; }
 
     /* Hourly Section */
-    .hourly-wrapper {
-        margin: 10px 0;
-        min-height: 70px;
-        flex-shrink: 0; /* Prevent collapsing */
-    }
-    .hour-item {
-        min-width: 45px;
-        height: 65px;
-    }
+    .hourly-wrapper { margin: 10px 0; min-height: 70px; flex-shrink: 0; }
+    .hour-item { min-width: 45px; height: 65px; }
     .hour-icon { font-size: 1.2rem; margin: 2px 0; }
     .hour-time, .hour-temp { font-size: 0.75rem; }
 
@@ -334,32 +322,27 @@ i.ph-compass { color: #ecf0f1; opacity: 0.8; }
     .summary-grid { margin: 5px 0; gap: 2px; flex-shrink: 0; }
     .stat-item .label { font-size: 0.65rem; }
     .stat-item i { font-size: 1rem; margin-bottom: 0; }
-
     .details-trigger { margin: 5px 0; padding: 5px; font-size: 0.8rem; }
 
-    /* 4. THE FIX: Protect 7-Day Section */
+    /* 4. THE FIX: Allow 7-Day Section to Flow Naturally */
     .weekly-section {
-        margin-top: auto; /* Push to bottom naturally */
-        flex-shrink: 0;   /* CRITICAL: Prevents it from getting squashed */
+        margin-top: 20px; /* Standard margin */
+        flex-shrink: 0;   /* Don't let it shrink */
         display: flex;
         flex-direction: column;
-        /* Remove overflow hidden so the main page scrolls instead */
         padding-bottom: 0;
         border-top: 1px solid rgba(255, 255, 255, 0.15);
     }
 
-    /* Allow the list to just be a list, let the parent scroll handle it */
     .daily-forecast-scroll {
-        flex-grow: 1;
+        flex-grow: 0;     /* Don't flex, just exist */
         height: auto;
-        max-height: none;
-        overflow: visible; /* Let it expand fully */
+        max-height: none; /* No scrollbar inside */
+        overflow: visible;
         background: rgba(0, 0, 0, 0.2);
         padding: 0 10px;
     }
 
     .daily-row { padding: 12px 5px; }
-
-    /* Hide footer on mobile */
     .text-white-50 { display: none; }
 }
