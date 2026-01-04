@@ -328,7 +328,7 @@ i.ph-compass { color: #ecf0f1; opacity: 0.8; }
     .stat-item .label { font-size: 0.65rem; }
     .stat-item i { font-size: 1rem; margin-bottom: 0; }
 
-    .details-trigger { margin: 5px 0; padding: 5px; font-size: 0.8rem; }
+    .details-trigger { margin: 5px 0; padding: 8px; font-size: 0.8rem; }
 
     /* 4. THE FIX: 7-Day Section Fills Remaining Space */
     .weekly-section {
