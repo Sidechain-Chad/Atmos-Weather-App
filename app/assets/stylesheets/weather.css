@@ -277,76 +277,85 @@ i.ph-compass { color: #ecf0f1; opacity: 0.8; }
 .daily-forecast-scroll.active { cursor: grabbing; scroll-behavior: auto !important; }
 .daily-forecast-scroll { cursor: grab; }
 
-/* --- MOBILE OPTIMIZATIONS (Floating Card + Scrollable) --- */
+/* --- MOBILE OPTIMIZATIONS (Tasteful Cut + Scroll Inside) --- */
 @media (max-width: 480px) {
-    /* 1. CONTAINER: Add padding to create space for particles */
+    /* 1. CONTAINER: Padding ensures particles are visible on edges */
     .weather-container {
-        padding: 15px !important;     /* Creates the gap for particles! */
-        height: auto !important;      /* Allow growing */
-        min-height: 100dvh;           /* Start at full screen */
+        padding: 15px !important;
+        height: auto !important;
+        min-height: 100dvh;
         width: 100%;
-        justify-content: center;      /* Center the card */
-        align-items: flex-start;      /* Align to top so it expands down */
+        display: flex;
+        flex-direction: column;
+        justify-content: center; /* Centers vertically if content is short */
+        align-items: center;
     }
 
-    /* 2. GLASS PANEL: Restore the "Card" look */
+    /* 2. GLASS PANEL: The Card */
     .glass-panel {
-        width: 100% !important;       /* Fill the container (minus padding) */
+        width: 100% !important;
         max-width: none !important;
-        height: auto !important;      /* Allow growing */
+        height: auto !important;
+        min-height: auto; /* Allow it to shrink/grow */
 
-        /* Remove the '100dvh' forcing so you see particles at top/bottom */
-        min-height: auto;
-
-        margin: 0 !important;         /* Reset margins (padding handles spacing) */
-
-        /* RESTORE CORNERS & BORDER */
-        border-radius: 25px !important;
+        margin: 0 !important;
+        border-radius: 25px !important; /* Floating Card Look */
         border: 1px solid rgba(255, 255, 255, 0.15) !important;
 
         display: flex;
         flex-direction: column;
-        justify-content: flex-start;
-        padding: 1.2rem 1rem 20px 1rem; /* Adjust internal padding */
+        padding: 1.2rem 1rem;
     }
 
-    /* 3. TOP CONTENT: Keep it compact */
-    .temp-display { font-size: 3.5rem; line-height: 1; margin: 5px 0; }
-    .city-name { font-size: 1.3rem; margin-top: 5px; }
+    /* 3. TOP CONTENT: Compact Layout */
+    .temp-display { font-size: 3.8rem; line-height: 1; margin: 5px 0; }
+    .city-name { font-size: 1.4rem; margin-top: 5px; }
     .date-display { font-size: 0.8rem; margin-bottom: 2px; }
-    .lead { font-size: 0.9rem; margin-bottom: 0.2rem; }
+    .lead { font-size: 0.9rem; margin-bottom: 0.5rem; }
     .search-box { margin-bottom: 5px; }
 
     /* Hourly Section */
     .hourly-wrapper { margin: 10px 0; min-height: 70px; flex-shrink: 0; }
-    .hour-item { min-width: 45px; height: 65px; }
-    .hour-icon { font-size: 1.2rem; margin: 2px 0; }
+    .hour-item { min-width: 48px; height: 70px; }
+    .hour-icon { font-size: 1.3rem; margin: 2px 0; }
     .hour-time, .hour-temp { font-size: 0.75rem; }
 
     /* Summary Grid */
-    .summary-grid { margin: 5px 0; gap: 2px; flex-shrink: 0; }
+    .summary-grid { margin: 8px 0; gap: 5px; flex-shrink: 0; }
     .stat-item .label { font-size: 0.65rem; }
-    .stat-item i { font-size: 1rem; margin-bottom: 0; }
-    .details-trigger { margin: 5px 0; padding: 5px; font-size: 0.8rem; }
+    .stat-item i { font-size: 1.1rem; margin-bottom: 0; }
+    .details-trigger { margin: 8px 0; padding: 5px; font-size: 0.85rem; }
 
-    /* 4. THE FIX: Allow 7-Day Section to Flow Naturally */
+    /* 4. THE FIX: Tasteful "Cut" for 7-Day Forecast */
     .weekly-section {
-        margin-top: 20px;
+        margin-top: 15px;
         flex-shrink: 0;
         display: flex;
         flex-direction: column;
-        padding-bottom: 0;
         border-top: 1px solid rgba(255, 255, 255, 0.15);
+        padding-top: 10px;
     }
 
     .daily-forecast-scroll {
-        flex-grow: 0;
+        /* STRICT HEIGHT LIMIT */
         height: auto;
-        max-height: none;
-        overflow: visible;
+        max-height: 160px; /* Shows exactly ~3 rows */
+
+        /* ENABLE INTERNAL SCROLL */
+        overflow-y: auto;
+
+        /* Visuals */
         background: rgba(0, 0, 0, 0.2);
         padding: 0 10px;
+        border-radius: 15px;
+
+        /* Smooth Mobile Scrolling */
+        -webkit-overflow-scrolling: touch;
     }
+
+    /* Style the internal scrollbar to be subtle */
+    .daily-forecast-scroll::-webkit-scrollbar { width: 3px; }
+    .daily-forecast-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
 
     .daily-row { padding: 12px 5px; }
     .text-white-50 { display: none; }
