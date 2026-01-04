@@ -445,6 +445,7 @@ export default class extends Controller {
         }
     }
 
+    // CLEANED: Removed event listeners (they are handled in connect/disconnect)
     initCanvas() {
         this.ctx = this.canvasTarget.getContext('2d');
         this.resizeCanvas();
@@ -553,6 +554,7 @@ export default class extends Controller {
         this.spinnerTarget.style.display = isLoading ? 'inline-block' : 'none';
 
         if (isLoading) {
+            // HIDE RESULT (Search Start)
             this.detailsWrapperTarget.classList.remove('open');
             this.caretIconTarget.classList.replace('ph-caret-up', 'ph-caret-down');
             this.resultTarget.style.transition = 'opacity 0.4s ease';
@@ -560,8 +562,11 @@ export default class extends Controller {
 
             setTimeout(() => {
                 this.resultTarget.style.display = 'none';
+
+                // Skeleton uses flex-column inline, so 'flex' is fine here
                 this.skeletonTarget.style.display = 'flex';
                 this.skeletonTarget.style.opacity = '0';
+
                 requestAnimationFrame(() => {
                     this.skeletonTarget.style.transition = 'opacity 0.4s ease';
                     this.skeletonTarget.style.opacity = '0.7';
@@ -569,12 +574,16 @@ export default class extends Controller {
             }, 400);
 
         } else {
+            // SHOW RESULT (Data Received)
             this.skeletonTarget.style.transition = 'opacity 0.4s ease';
             this.skeletonTarget.style.opacity = '0';
 
             setTimeout(() => {
                 this.skeletonTarget.style.display = 'none';
-                this.resultTarget.style.display = 'flex';
+
+                // FIX: Changed from 'flex' to 'block' to prevent horizontal squashing
+                this.resultTarget.style.display = 'block';
+
                 this.resultTarget.style.opacity = '0';
                 requestAnimationFrame(() => {
                     this.resultTarget.style.transition = 'opacity 0.8s ease';
