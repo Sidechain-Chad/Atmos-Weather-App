@@ -104,31 +104,30 @@ export default class extends Controller {
             weather: 'snow',
             particles: [],
             mouse: { x: null, y: null },
-            userLocation: null
+            userLocation: null,
+            lastFetchTime: 0,
+            currentCity: null
         };
 
+        this.selectedIndex = -1;
         this.initCanvas();
         this.animate();
 
         // --- INIT SCROLL PHYSICS ---
-        this.initHourlyScroll(); // Horizontal (X-Axis)
-        this.initDailyScroll();  // Vertical (Y-Axis)
+        this.initHourlyScroll();
+        this.initDailyScroll();
 
         this.getUserLocation();
 
-        // --- DEFINE HANDLERS (Stored so we can remove them) ---
-
-        // Click Outside
+        // --- HANDLERS ---
         this.clickOutsideHandler = (e) => {
             if (!this.element.contains(e.target)) {
                 this.searchResultsTarget.classList.remove('active');
             }
         };
 
-        // Resize (High Performance)
         this.resizeHandler = this.resizeCanvas.bind(this);
 
-        // Mouse/Touch Interaction
         this.mouseMoveHandler = (e) => {
             this.appState.mouse.x = e.x;
             this.appState.mouse.y = e.y;
@@ -144,26 +143,53 @@ export default class extends Controller {
             this.appState.mouse.y = null;
         };
 
-        // --- ADD LISTENERS ---
+        // 1. REFRESH ON WAKE (When you switch back to the app)
+        this.visibilityHandler = () => {
+            if (document.visibilityState === "visible") {
+                this.checkAndRefreshData();
+            }
+        };
+
+        // --- LISTENERS ---
         document.addEventListener('click', this.clickOutsideHandler);
         window.addEventListener('resize', this.resizeHandler);
         window.addEventListener('mousemove', this.mouseMoveHandler);
         window.addEventListener('touchmove', this.touchMoveHandler);
         window.addEventListener('mouseout', this.mouseOutHandler);
+
+        // Add Visibility Listener
+        document.addEventListener("visibilitychange", this.visibilityHandler);
+
+        // 2. REFRESH TIMER (Every 15 minutes while app is open)
+        this.refreshTimer = setInterval(() => {
+            this.checkAndRefreshData();
+        }, 900000);
     }
 
     disconnect() {
         // Remove UI Listeners
         document.removeEventListener('click', this.clickOutsideHandler);
         window.removeEventListener('resize', this.resizeHandler);
-
-        // Remove Mouse/Touch Listeners
         window.removeEventListener('mousemove', this.mouseMoveHandler);
         window.removeEventListener('touchmove', this.touchMoveHandler);
         window.removeEventListener('mouseout', this.mouseOutHandler);
 
+        // Remove Refresh Logic
+        document.removeEventListener("visibilitychange", this.visibilityHandler);
+        if (this.refreshTimer) clearInterval(this.refreshTimer);
+
         // Stop Animation Loop
         cancelAnimationFrame(this.animationFrame);
+    }
+
+    checkAndRefreshData() {
+        const now = Date.now();
+        // Check if data is older than 15 minutes (900,000 ms) and if we have a city loaded
+        if (this.appState.currentCity && (now - this.appState.lastFetchTime >= 900000)) {
+            console.log("Auto-refreshing weather data...");
+            const c = this.appState.currentCity;
+            this.executeWeatherFetch(c.lat, c.lon, c.name, c.country);
+        }
     }
 
     // --- Geolocation & Smart Search Logic ---
@@ -243,6 +269,8 @@ export default class extends Controller {
     }
 
     renderSearchResults(results) {
+        this.selectedIndex = -1;
+
         this.searchResultsTarget.innerHTML = '';
         results.forEach(city => {
             const div = document.createElement('div');
@@ -319,6 +347,10 @@ export default class extends Controller {
     }
 
     async executeWeatherFetch(latitude, longitude, name, country) {
+        // Save state so auto-refresh knows what to fetch later
+        this.appState.lastFetchTime = Date.now();
+        this.appState.currentCity = { lat: latitude, lon: longitude, name: name, country: country };
+
         this.showLoading(true);
         this.hideError();
 
@@ -342,6 +374,46 @@ export default class extends Controller {
         }
     }
 
+    handleKeydown(event) {
+        const items = this.searchResultsTarget.querySelectorAll('.search-result-item');
+        if (!items.length) return;
+
+        if (event.key === 'ArrowDown') {
+            event.preventDefault(); // Stop cursor moving in input
+            this.selectedIndex++;
+            if (this.selectedIndex >= items.length) this.selectedIndex = 0; // Loop to top
+            this.updateSelection(items);
+        }
+        else if (event.key === 'ArrowUp') {
+            event.preventDefault();
+            this.selectedIndex--;
+            if (this.selectedIndex < 0) this.selectedIndex = items.length - 1; // Loop to bottom
+            this.updateSelection(items);
+        }
+        else if (event.key === 'Enter') {
+            if (this.selectedIndex > -1) {
+                event.preventDefault(); // Stop form submit
+                items[this.selectedIndex].click(); // Simulate click on selected item
+            }
+        }
+        else if (event.key === 'Escape') {
+            this.searchResultsTarget.classList.remove('active');
+            this.cityInputTarget.blur();
+        }
+    }
+
+    updateSelection(items) {
+        items.forEach((item, index) => {
+            if (index === this.selectedIndex) {
+                item.classList.add('selected');
+                // Ensure the item is visible if the list is scrolling
+                item.scrollIntoView({ block: 'nearest' });
+            } else {
+                item.classList.remove('selected');
+            }
+        });
+    }
+
     // --- UI & Rendering Logic ---
 
     processAllData(city, country, wData, aData, utcOffsetSeconds, targetLat, targetLon) {
@@ -354,7 +426,7 @@ export default class extends Controller {
         const cityTime = new Date(nowUTC + (utcOffsetSeconds * 1000));
         const currentHour = cityTime.getHours();
 
-        // Check if this is "My Location" (within 20km)
+        // 1. Check if it's "My Location" via GPS distance (20km threshold)
         let isMyLocation = false;
         if (this.appState.userLocation) {
             const dist = this.calculateDistance(
@@ -365,6 +437,15 @@ export default class extends Controller {
             );
             if (dist < 20) isMyLocation = true;
         }
+
+        // 2. NEW LOGIC: Check if we are in the Same Timezone
+        // JS getTimezoneOffset returns minutes (inverted). E.g. UTC+2 = -120.
+        // We multiply by -60 to get Seconds matching Open-Meteo format.
+        const userBrowserOffsetSeconds = new Date().getTimezoneOffset() * -60;
+        const isSameTimeZone = userBrowserOffsetSeconds === utcOffsetSeconds;
+
+        // Show "Now" if it's my location OR if the timezones match
+        const showNowLabel = isMyLocation || isSameTimeZone;
 
         this.cityNameTarget.textContent = city;
         this.countryCodeTarget.textContent = country;
@@ -380,8 +461,8 @@ export default class extends Controller {
         this.humidityTarget.textContent = current.relative_humidity_2m;
         this.renderAqiSummary(aqi);
 
-        // Render Hourly with Location Flag
-        this.renderHourly(hourly, currentHour, isMyLocation);
+        // Pass 'showNowLabel' instead of just 'isMyLocation'
+        this.renderHourly(hourly, currentHour, showNowLabel);
 
         this.render7DayForecast(daily);
 
@@ -401,15 +482,16 @@ export default class extends Controller {
         this.precipSumTarget.textContent = daily.precipitation_sum[0];
 
         this.handleTheme(cityTime, daily, current.weather_code);
-        this.resultTarget.style.display = 'block'; // Ensure correct vertical stacking
-        this.resultTarget.style.opacity = 1;
+
+        this.resultTarget.style.display = 'flex';
+        this.resultTarget.style.flexDirection = 'column';
     }
 
     updateDateDisplay(dateObj) {
         this.dateDisplayTarget.textContent = dateObj.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' });
     }
 
-    renderHourly(hourly, currentHour, isMyLocation) {
+    renderHourly(hourly, currentHour, showNowLabel) {
         // RESET SCROLL: Snap back to the start ("Now")
         this.hourlyContainerTarget.scrollLeft = 0;
 
@@ -427,7 +509,9 @@ export default class extends Controller {
             const iconClass = this.getIconClass(code, isDay === 1);
 
             let displayTime = `${displayHourNum}:00`;
-            if (i === 0 && isMyLocation) {
+
+            // USE THE NEW FLAG HERE
+            if (i === 0 && showNowLabel) {
                 displayTime = "Now";
             }
 
@@ -589,34 +673,54 @@ export default class extends Controller {
         this.spinnerTarget.style.display = isLoading ? 'inline-block' : 'none';
 
         if (isLoading) {
+            // --- GOING TO LOADING STATE ---
             this.detailsWrapperTarget.classList.remove('open');
             this.caretIconTarget.classList.replace('ph-caret-up', 'ph-caret-down');
-            this.resultTarget.style.transition = 'opacity 0.4s ease';
+
+            // Reset animation state
+            this.resultTarget.classList.remove('grand-entrance');
+
+            // 1. Fade out Result
+            this.resultTarget.style.transition = 'opacity 0.3s ease';
             this.resultTarget.style.opacity = '0';
 
             setTimeout(() => {
+                // 2. Hide Result completely
                 this.resultTarget.style.display = 'none';
+
+                // 3. Show Skeleton
                 this.skeletonTarget.style.display = 'flex';
-                this.skeletonTarget.style.opacity = '0';
+                // Force a reflow so the transition works
+                void this.skeletonTarget.offsetWidth;
+
+                // 4. Fade in Skeleton
                 requestAnimationFrame(() => {
-                    this.skeletonTarget.style.transition = 'opacity 0.4s ease';
+                    this.skeletonTarget.style.transition = 'opacity 0.3s ease';
                     this.skeletonTarget.style.opacity = '0.7';
                 });
-            }, 400);
+            }, 300);
 
         } else {
-            this.skeletonTarget.style.transition = 'opacity 0.4s ease';
+            // --- FINISHING LOADING (Grand Entrance) ---
+
+            // 1. Fade out Skeleton
+            this.skeletonTarget.style.transition = 'opacity 0.3s ease';
             this.skeletonTarget.style.opacity = '0';
 
             setTimeout(() => {
+                // 2. Hide Skeleton completely (CRITICAL STEP)
                 this.skeletonTarget.style.display = 'none';
-                this.resultTarget.style.display = 'block'; // FIXED: block prevents flex squash
+
+                // 3. Prepare Result (Invisible first)
+                this.resultTarget.style.display = 'flex';
+                this.resultTarget.style.flexDirection = 'column';
                 this.resultTarget.style.opacity = '0';
+
+                // 4. TRIGGER THE GRAND ENTRANCE
                 requestAnimationFrame(() => {
-                    this.resultTarget.style.transition = 'opacity 0.8s ease';
-                    this.resultTarget.style.opacity = '1';
+                    this.resultTarget.classList.add('grand-entrance');
                 });
-            }, 400);
+            }, 300);
         }
     }
 

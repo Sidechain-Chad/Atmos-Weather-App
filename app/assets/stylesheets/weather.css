@@ -12,10 +12,10 @@ body, html {
     color: white;
     transition: background var(--transition-speed) ease;
 
-    /* 1. FIX WHITE BAR: Set default background to match theme */
+    /* FIX WHITE BAR: Set default background to match theme */
     background-color: #1a2f2b;
     background: linear-gradient(to bottom, #1a2f2b, #2f5a54);
-    background-attachment: fixed; /* Keeps background static */
+    background-attachment: fixed;
 
     /* Touch fixes */
     -webkit-overflow-scrolling: touch;
@@ -28,16 +28,9 @@ body.theme-dusk    { background: linear-gradient(to bottom, #2b1d36, #cc7e85); b
 body.theme-day     { background: linear-gradient(to bottom, #3b4a48, #8c9e8c); background-attachment: fixed; }
 body.theme-day.weather-clear { background: linear-gradient(to bottom, #4a3b2a, #d4af37); background-attachment: fixed; }
 
-/* --- LAYOUT --- */
-/* 2. FIX PARTICLES: Ensure canvas is fixed to the WINDOW, not the page */
+/* --- LAYOUT (Global/Desktop Default) --- */
 #canvas-container {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    z-index: 1;
-    pointer-events: none; /* Let clicks pass through */
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; pointer-events: none;
 }
 
 .overlay {
@@ -210,6 +203,8 @@ body.theme-day.weather-clear { background: linear-gradient(to bottom, #4a3b2a, #
 .daily-forecast-scroll::-webkit-scrollbar { width: 6px; }
 .daily-forecast-scroll::-webkit-scrollbar-track { background: transparent; }
 .daily-forecast-scroll::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.2); border-radius: 10px; }
+.daily-forecast-scroll.active { cursor: grabbing; scroll-behavior: auto !important; }
+.daily-forecast-scroll { cursor: grab; }
 
 .daily-row {
     display: grid; grid-template-columns: 1fr 1fr 1fr;
@@ -238,6 +233,7 @@ body.theme-day.weather-clear { background: linear-gradient(to bottom, #4a3b2a, #
 .search-result-item { padding: 12px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; text-align: left; transition: background 0.2s; font-size: 0.95rem; }
 .search-result-item:last-child { border-bottom: none; }
 .search-result-item:hover { background: rgba(255,255,255,0.1); }
+.search-result-item.selected { background: rgba(255,255,255,0.1); }
 .search-result-item small { display: block; opacity: 0.6; font-size: 0.75rem; }
 
 /* Loader */
@@ -272,96 +268,109 @@ i.ph-thermometer { color: #ff8b94; }
 i.ph-eye { color: #DCD0FF; }
 i.ph-gauge { color: #FDFD96; }
 i.ph-compass { color: #ecf0f1; opacity: 0.8; }
-.hourly-container i { color: white !important; filter: none !important; text-shadow: none !important; opacity: 1; }
 
-.daily-forecast-scroll.active { cursor: grabbing; scroll-behavior: auto !important; }
-.daily-forecast-scroll { cursor: grab; }
+.hourly-container i {
+    opacity: 1;
+    font-size: 1.5rem;
+}
+
+/* --- GRAND ENTRANCE ANIMATION --- */
+.grand-entrance {
+    animation: popIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes popIn {
+    0% {
+        opacity: 0;
+        transform: scale(0.95) translateY(20px);
+        filter: blur(10px);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+        filter: blur(0);
+    }
+}
 
 /* --- MOBILE OPTIMIZATIONS (The "Make It Fit" Fix) --- */
 @media (max-width: 480px) {
     .weather-container {
         padding: 15px !important;
-        height: 100dvh !important;    /* Force container to match screen exactly */
+        height: 100dvh !important;
         min-height: 100dvh;
         width: 100%;
         display: flex;
         flex-direction: column;
-        justify-content: center;      /* Your desired centering */
+        justify-content: center;
         align-items: center;
-        overflow: hidden;             /* Prevent page scroll */
+        overflow: hidden;
     }
 
     .glass-panel {
         width: 100% !important;
         max-width: none !important;
-
-        /* THE FIX: Constrain card height so it fits in the container */
         max-height: 95dvh !important;
         height: auto;
-
         margin: 0 !important;
         border-radius: 25px !important;
         border: 1px solid rgba(255, 255, 255, 0.15) !important;
-
         display: flex;
         flex-direction: column;
-
-        /* Tighten internal padding to save vertical space */
         padding: 1rem 1rem 1rem 1rem;
     }
 
-    /* COMPRESSION ZONE: Shrink elements to ensure they fit the height */
-
-    .temp-display {
-        font-size: 3.5rem; /* Slightly smaller to save space */
-        line-height: 1;
-        margin: 2px 0;
-    }
-
+    .temp-display { font-size: 3.5rem; line-height: 1; margin: 2px 0; }
     .city-name { font-size: 1.3rem; margin-top: 5px; }
     .date-display { font-size: 0.8rem; margin-bottom: 2px; }
     .lead { font-size: 0.9rem; margin-bottom: 0.2rem; }
     .search-box { margin-bottom: 5px; }
-
-    /* Hourly: Compact */
-    .hourly-wrapper {
-        margin: 5px 0;
-        min-height: 65px;
-        flex-shrink: 1; /* Allow shrinking if screen is tiny */
-    }
+    .hourly-wrapper { margin: 5px 0; min-height: 65px; flex-shrink: 1; }
     .hour-item { min-width: 45px; height: 65px; }
     .hour-icon { font-size: 1.2rem; margin: 2px 0; }
     .hour-time, .hour-temp { font-size: 0.75rem; }
-
-    /* Summary: Compact */
     .summary-grid { margin: 5px 0; gap: 5px; flex-shrink: 1; }
     .stat-item .label { font-size: 0.6rem; }
     .stat-item i { font-size: 1rem; margin-bottom: 0; }
-
     .details-trigger { margin: 5px 0; padding: 2px; font-size: 0.8rem; }
-
-    /* 7-Day Widget: Your "Tasteful Cut" */
-    .weekly-section {
-        margin-top: 10px;
-        flex-shrink: 0;
-        display: flex;
-        flex-direction: column;
-        border-top: 1px solid rgba(255, 255, 255, 0.15);
-        padding-top: 10px;
-    }
-
-    .daily-forecast-scroll {
-        padding: 10px;
-        max-height: 70px;  /* Strict limit to fit 1 row */
-        overflow-y: auto;
-        background: rgba(0, 0, 0, 0.2);
-        border-radius: 15px;
-        -webkit-overflow-scrolling: touch;
-    }
-
-    /* Hide scrollbar */
+    .weekly-section { margin-top: 10px; flex-shrink: 0; display: flex; flex-direction: column; border-top: 1px solid rgba(255, 255, 255, 0.15); padding-top: 10px; }
+    .daily-forecast-scroll { padding: 10px; max-height: 70px; overflow-y: auto; background: rgba(0, 0, 0, 0.2); border-radius: 15px; -webkit-overflow-scrolling: touch; }
     .daily-forecast-scroll::-webkit-scrollbar { width: 0px; background: transparent; }
-
     .daily-row { padding: 10px 5px; }
     .text-white-50 { display: none; }
+}
+
+/* --- UNIVERSAL DESKTOP/LAPTOP CARD (Min-Width: 481px) --- */
+@media (min-width: 481px) {
+    .glass-panel {
+        /* 1. Nice Border Gap: Never touch top/bottom of screen */
+        min-height: auto;
+        height: auto;
+        max-height: 85vh;
+
+        /* 2. Constrain Width: Keeps it looking like a neat app card */
+        max-width: 550px;
+
+        overflow-y: auto;
+        padding: 1.5rem;
+    }
+
+    /* Shrink font slightly so it looks neat */
+    .temp-display { font-size: 4rem; margin: 0.5rem 0; }
+    .city-name { font-size: 1.5rem; }
+
+    /* --- THE 3-DAY FIX (Applied to all big screens) --- */
+
+    .daily-forecast-scroll {
+        /* Math: 3 rows * 50px + 10px padding = 160px */
+        max-height: 160px !important;
+        padding: 5px 15px;
+    }
+
+    .daily-row {
+        /* Force neat 50px rows */
+        height: 50px;
+        padding: 0 5px !important;
+        display: grid;
+        align-items: center;
+    }
 }
