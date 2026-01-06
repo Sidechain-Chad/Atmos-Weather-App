@@ -410,9 +410,11 @@ export default class extends Controller {
     }
 
     renderHourly(hourly, currentHour, isMyLocation) {
+        // RESET SCROLL: Snap back to the start ("Now")
+        this.hourlyContainerTarget.scrollLeft = 0;
+
         this.hourlyContainerTarget.innerHTML = "";
 
-        // Loop 24 times to show the next 24 hours continuously
         for (let i = 0; i < 24; i++) {
             const dataIndex = currentHour + i;
             if (dataIndex >= hourly.time.length) break;
@@ -421,11 +423,9 @@ export default class extends Controller {
             const temp = Math.round(hourly.temperature_2m[dataIndex]);
             const isDay = hourly.is_day[dataIndex];
 
-            // Handle Midnight Rollover (0-23)
             const displayHourNum = (currentHour + i) % 24;
             const iconClass = this.getIconClass(code, isDay === 1);
 
-            // Logic: Only show "Now" if it is YOUR location
             let displayTime = `${displayHourNum}:00`;
             if (i === 0 && isMyLocation) {
                 displayTime = "Now";
@@ -433,8 +433,6 @@ export default class extends Controller {
 
             const div = document.createElement('div');
             div.className = 'hour-item';
-
-            // Highlight current hour visually
             if (i === 0) div.classList.add('now');
 
             div.innerHTML = `
@@ -447,7 +445,11 @@ export default class extends Controller {
     }
 
     render7DayForecast(daily) {
+        // RESET SCROLL: Snap back to the top (Today/Tomorrow)
+        this.dailyContainerTarget.scrollTop = 0;
+
         this.dailyContainerTarget.innerHTML = '';
+
         for (let i = 1; i < daily.time.length; i++) {
             const dateStr = daily.time[i];
             const max = Math.round(daily.temperature_2m_max[i]);
