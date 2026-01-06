@@ -13,9 +13,9 @@ body, html {
     transition: background var(--transition-speed) ease;
 
     /* FIX WHITE BAR: Set default background to match theme */
-    background-color: #1a2f2b;
+    background-color: #1a2f2b;  /* Fallback solid color */
     background: linear-gradient(to bottom, #1a2f2b, #2f5a54);
-    background-attachment: fixed;
+    background-attachment: fixed;  /* Critical: stays fixed during scroll */
 
     /* Touch fixes */
     -webkit-overflow-scrolling: touch;
@@ -317,20 +317,14 @@ i.ph-compass { color: #ecf0f1; opacity: 0.8; }
     .glass-panel {
         width: 100% !important;
         max-width: none !important;
-
-        /* 1. Constraint: Stop at 95% of screen height */
         max-height: 95dvh !important;
         height: auto;
-
         margin: 0 !important;
         border-radius: 25px !important;
         border: 1px solid rgba(255, 255, 255, 0.15) !important;
-
         display: flex;
         flex-direction: column;
         padding: 1rem 1rem 1rem 1rem;
-
-        /* --- THE SCROLL FIX --- */
         overflow-y: auto !important;
         -webkit-overflow-scrolling: touch;
         justify-content: flex-start !important;
@@ -350,9 +344,146 @@ i.ph-compass { color: #ecf0f1; opacity: 0.8; }
     .stat-item .label { font-size: 0.6rem; }
     .stat-item i { font-size: 1rem; margin-bottom: 0; }
     .details-trigger { margin: 5px 0; padding: 2px; font-size: 0.8rem; }
-    .weekly-section { margin-top: 10px; flex-shrink: 0; display: flex; flex-direction: column; border-top: 1px solid rgba(255, 255, 255, 0.15); padding-top: 10px; }
-    .daily-forecast-scroll { padding: 10px; max-height: 70px; overflow-y: auto; background: rgba(0, 0, 0, 0.2); border-radius: 15px; -webkit-overflow-scrolling: touch; }
+
+    /* FIX: Better spacing for "View Full Report" section */
+    .details-wrapper { margin-top: 5px; }
+    .detailed-grid {
+        padding: 0.8rem;
+        gap: 0.5rem;
+        grid-template-columns: 1fr; /* Stack in single column on mobile */
+    }
+
+    /* FIX: Add section headers for clarity */
+    .detailed-grid > div[style*="grid-column"] {
+        padding-bottom: 8px !important;
+        margin-bottom: 8px !important;
+    }
+
+    .detail-row {
+        padding: 10px 8px;
+        font-size: 0.85rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        min-height: 36px;
+        gap: 12px;
+    }
+    .detail-label {
+        font-size: 0.7rem; /* Reduced from 0.75rem */
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+    .detail-value {
+        font-size: 0.8rem; /* Reduced from 0.85rem */
+        text-align: right;
+        margin-left: auto;
+        flex-shrink: 0;
+    }
+
+    /* FIX: Increase daily forecast scroll height */
+    .weekly-section {
+        margin-top: 10px;
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+        border-top: 1px solid rgba(255, 255, 255, 0.15);
+        padding-top: 10px;
+    }
+    .daily-forecast-scroll {
+        padding: 10px;
+        max-height: 180px; /* Increased from 70px */
+        overflow-y: auto;
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 15px;
+        -webkit-overflow-scrolling: touch;
+    }
     .daily-forecast-scroll::-webkit-scrollbar { width: 0px; background: transparent; }
-    .daily-row { padding: 10px 5px; }
+    .daily-row {
+        padding: 12px 5px; /* Slightly more breathing room */
+        min-height: 50px;
+    }
+    .day-name { font-size: 0.85rem; }
+    .day-num { font-size: 0.7rem; }
+    .daily-icon { font-size: 1.3rem; }
+    .temp-high { font-size: 0.95rem; }
+    .temp-low { font-size: 0.85rem; }
+
     .text-white-50 { display: none; }
+}
+
+/* Larger phones (iPhone 12/13/14 Pro Max, Galaxy S21+, etc.) */
+@media (min-width: 481px) and (max-width: 768px) {
+    .glass-panel {
+        max-width: 600px;
+        padding: 2rem 1.5rem;
+        max-height: 90dvh; /* Use more screen space */
+    }
+
+    /* Larger typography for bigger screens */
+    .temp-display { font-size: 4.5rem; }
+    .city-name { font-size: 1.6rem; }
+    .lead { font-size: 1.1rem; }
+
+    /* Better hourly forecast */
+    .hourly-wrapper { margin: 1rem 0; }
+    .hour-item { min-width: 60px; height: 80px; }
+    .hour-icon { font-size: 1.5rem; }
+    .hour-time, .hour-temp { font-size: 0.9rem; }
+
+    /* Summary grid with better spacing */
+    .summary-grid {
+        gap: 15px;
+        margin: 1.5rem 0;
+    }
+    .stat-item i { font-size: 1.4rem; }
+    .stat-item .label { font-size: 0.75rem; }
+    .stat-item .value { font-size: 1.1rem; }
+
+    /* Two-column layout for details on larger phones */
+    .detailed-grid {
+        grid-template-columns: 1fr 1fr; /* Keep 2 columns */
+        gap: 0.8rem;
+        padding: 1rem;
+    }
+
+    .detail-row {
+        padding: 10px 8px;
+        min-height: 38px;
+        gap: 15px; /* Match the smaller screen gap */
+    }
+
+    .detail-label { font-size: 0.8rem; }
+    .detail-value {
+        font-size: 0.9rem;
+        padding-left: 8px; /* Extra spacing after value */
+    }
+
+    /* Larger daily forecast */
+    .daily-forecast-scroll {
+        max-height: 250px; /* More space on larger phones */
+        padding: 12px;
+    }
+
+    .daily-row {
+        padding: 14px 10px;
+        min-height: 55px;
+    }
+    .day-name { font-size: 0.95rem; }
+    .daily-icon { font-size: 1.5rem; }
+    .temp-high { font-size: 1.05rem; }
+    .temp-low { font-size: 0.95rem; }
+}
+
+/* Tablets */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .glass-panel {
+        max-width: 700px;
+    }
+
+    .daily-forecast-scroll {
+        max-height: 250px;
+    }
 }
