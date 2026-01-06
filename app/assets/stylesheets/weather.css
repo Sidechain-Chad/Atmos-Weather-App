@@ -72,6 +72,14 @@ body.theme-day.weather-clear { background: linear-gradient(to bottom, #4a3b2a, #
     justify-content: space-between;
     min-height: 85vh;
     transition: all 0.5s ease;
+
+    /* HIDE SCROLLBAR BUT ALLOW SCROLLING */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.glass-panel::-webkit-scrollbar {
+    display: none;
 }
 
 /* Typography */
