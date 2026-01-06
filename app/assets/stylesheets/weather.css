@@ -317,16 +317,26 @@ i.ph-compass { color: #ecf0f1; opacity: 0.8; }
     .glass-panel {
         width: 100% !important;
         max-width: none !important;
+
+        /* 1. Constraint: Stop at 95% of screen height */
         max-height: 95dvh !important;
         height: auto;
+
         margin: 0 !important;
         border-radius: 25px !important;
         border: 1px solid rgba(255, 255, 255, 0.15) !important;
+
         display: flex;
         flex-direction: column;
         padding: 1rem 1rem 1rem 1rem;
+
+        /* --- THE SCROLL FIX --- */
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+        justify-content: flex-start !important;
     }
 
+    /* Mobile Typography & Spacing Overrides */
     .temp-display { font-size: 3.5rem; line-height: 1; margin: 2px 0; }
     .city-name { font-size: 1.3rem; margin-top: 5px; }
     .date-display { font-size: 0.8rem; margin-bottom: 2px; }
@@ -345,40 +355,4 @@ i.ph-compass { color: #ecf0f1; opacity: 0.8; }
     .daily-forecast-scroll::-webkit-scrollbar { width: 0px; background: transparent; }
     .daily-row { padding: 10px 5px; }
     .text-white-50 { display: none; }
-}
-
-/* --- UNIVERSAL DESKTOP/LAPTOP CARD (Min-Width: 481px) --- */
-@media (min-width: 481px) {
-    .glass-panel {
-        /* 1. Nice Border Gap: Never touch top/bottom of screen */
-        min-height: auto;
-        height: auto;
-        max-height: 85vh;
-
-        /* 2. Constrain Width: Keeps it looking like a neat app card */
-        max-width: 550px;
-
-        overflow-y: auto;
-        padding: 1.5rem;
-    }
-
-    /* Shrink font slightly so it looks neat */
-    .temp-display { font-size: 4rem; margin: 0.5rem 0; }
-    .city-name { font-size: 1.5rem; }
-
-    /* --- THE 3-DAY FIX (Applied to all big screens) --- */
-
-    .daily-forecast-scroll {
-        /* Math: 3 rows * 50px + 10px padding = 160px */
-        max-height: 160px !important;
-        padding: 5px 15px;
-    }
-
-    .daily-row {
-        /* Force neat 50px rows */
-        height: 50px;
-        padding: 0 5px !important;
-        display: grid;
-        align-items: center;
-    }
 }

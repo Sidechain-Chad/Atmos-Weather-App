@@ -110,6 +110,9 @@ export default class extends Controller {
         };
 
         this.selectedIndex = -1;
+        // Add this right before this.initCanvas();
+        this.animate = this.animate.bind(this);
+        this.abortController = new AbortController(); // We'll use this for cleanup later
         this.initCanvas();
         this.animate();
 
@@ -143,10 +146,19 @@ export default class extends Controller {
             this.appState.mouse.y = null;
         };
 
-        // 1. REFRESH ON WAKE (When you switch back to the app)
+        // Inside your connect() method, update the handler definition:
         this.visibilityHandler = () => {
             if (document.visibilityState === "visible") {
+                // 1. Resume Animation
+                if (!this.animationFrame) {
+                    this.animate();
+                }
+                // 2. Refresh Data if needed
                 this.checkAndRefreshData();
+            } else {
+                // 3. Pause Animation to save battery/CPU
+                cancelAnimationFrame(this.animationFrame);
+                this.animationFrame = null;
             }
         };
 
@@ -180,6 +192,8 @@ export default class extends Controller {
 
         // Stop Animation Loop
         cancelAnimationFrame(this.animationFrame);
+
+        this.abortController.abort();
     }
 
     checkAndRefreshData() {
@@ -587,12 +601,18 @@ export default class extends Controller {
     }
 
     animate() {
+        // Standard clear and draw
         this.ctx.clearRect(0, 0, this.canvasTarget.width, this.canvasTarget.height);
+
         this.appState.particles.forEach(p => {
             p.update(this.appState.mouse.x, this.appState.mouse.y, this.appState.weather, this.appState.theme);
             p.draw(this.ctx);
         });
-        this.animationFrame = requestAnimationFrame(this.animate.bind(this));
+
+        // Only request next frame if we are actually visible (double check)
+        if (document.visibilityState === "visible") {
+            this.animationFrame = requestAnimationFrame(this.animate);
+        }
     }
 
     handleTheme(cityTime, daily, weatherCode) {
@@ -754,6 +774,9 @@ export default class extends Controller {
 
     // --- PHYSICS: HOURLY (Horizontal X-Axis) ---
     initHourlyScroll() {
+        // 1. Create the signal option
+        const opts = { signal: this.abortController.signal };
+
         const slider = this.hourlyContainerTarget;
         let isDown = false;
         let startX;
@@ -767,18 +790,18 @@ export default class extends Controller {
             startX = e.pageX - slider.offsetLeft;
             scrollLeft = slider.scrollLeft;
             cancelAnimationFrame(momentumID);
-        });
+        }, opts);
 
         slider.addEventListener('mouseleave', () => {
             isDown = false;
             slider.classList.remove('active');
-        });
+        }, opts);
 
         slider.addEventListener('mouseup', () => {
             isDown = false;
             slider.classList.remove('active');
             this.beginMomentumX(slider, velX);
-        });
+        }, opts);
 
         slider.addEventListener('mousemove', (e) => {
             if (!isDown) return;
@@ -788,7 +811,7 @@ export default class extends Controller {
             const prevScrollLeft = slider.scrollLeft;
             slider.scrollLeft = scrollLeft - walk;
             velX = slider.scrollLeft - prevScrollLeft;
-        });
+        }, opts);
     }
 
     beginMomentumX(slider, velocity) {
@@ -804,6 +827,8 @@ export default class extends Controller {
 
     // --- PHYSICS: DAILY (Vertical Y-Axis) ---
     initDailyScroll() {
+        const opts = { signal: this.abortController.signal };
+
         const slider = this.dailyContainerTarget;
         let isDown = false;
         let startY;
@@ -817,28 +842,28 @@ export default class extends Controller {
             startY = e.pageY - slider.offsetTop;
             scrollTop = slider.scrollTop;
             cancelAnimationFrame(momentumID);
-        });
+        }, opts);
 
         slider.addEventListener('mouseleave', () => {
             isDown = false;
             slider.classList.remove('active');
-        });
+        }, opts);
 
         slider.addEventListener('mouseup', () => {
             isDown = false;
             slider.classList.remove('active');
             this.beginMomentumY(slider, velY);
-        });
+        }, opts);
 
         slider.addEventListener('mousemove', (e) => {
             if (!isDown) return;
             e.preventDefault();
             const y = e.pageY - slider.offsetTop;
-            const walk = (y - startY) * 1.5; // Drag Multiplier
+            const walk = (y - startY) * 1.5;
             const prevScrollTop = slider.scrollTop;
             slider.scrollTop = scrollTop - walk;
             velY = slider.scrollTop - prevScrollTop;
-        });
+        }, opts);
     }
 
     beginMomentumY(slider, velocity) {
