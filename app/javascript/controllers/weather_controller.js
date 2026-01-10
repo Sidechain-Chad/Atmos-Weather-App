@@ -584,16 +584,22 @@ export default class extends Controller {
         }
     }
 
-    resizeCanvas() {
+resizeCanvas() {
+        // Updated to handle mobile rotation better
+        const width = window.innerWidth || document.documentElement.clientWidth;
+        const height = window.innerHeight || document.documentElement.clientHeight;
         const dpr = window.devicePixelRatio || 1;
-        this.canvasTarget.width = window.innerWidth * dpr;
-        this.canvasTarget.height = window.innerHeight * dpr;
+
+        this.canvasTarget.width = width * dpr;
+        this.canvasTarget.height = height * dpr;
         this.ctx.scale(dpr, dpr);
-        this.canvasTarget.style.width = window.innerWidth + 'px';
-        this.canvasTarget.style.height = window.innerHeight + 'px';
+
+        this.canvasTarget.style.width = width + 'px';
+        this.canvasTarget.style.height = height + 'px';
+
         this.appState.particles.forEach(p => {
-            p.canvasWidth = window.innerWidth;
-            p.canvasHeight = window.innerHeight;
+            p.canvasWidth = width;
+            p.canvasHeight = height;
         });
     }
 
