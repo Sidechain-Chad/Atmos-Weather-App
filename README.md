@@ -2,7 +2,7 @@ Atmos Weather App
 
 A clean, glass-morphism weather app that shows you the current conditions, hourly forecast, and the week ahead. The background theme changes based on the time of day, and there are some interactive particles that react to your mouse.
 
-[Check out the live site here](https://atmos-weather-app.onrender.com/)**
+<a href="https://atmos-weather-app.onrender.com/" target="_blank">Check out the live site here</a>
 
 What it does
 
