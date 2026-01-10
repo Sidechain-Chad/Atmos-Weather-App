@@ -487,3 +487,55 @@ i.ph-compass { color: #ecf0f1; opacity: 0.8; }
         max-height: 250px;
     }
 }
+
+/* --- LAPTOPS & DESKTOPS (MacBooks, Monitors) --- */
+@media (min-width: 1025px) {
+    .glass-panel {
+        /* Reset height constraints so it doesn't look weird on short screens */
+        min-height: auto;
+        height: auto;
+        max-height: 90vh; /* Keeps it within the screen */
+
+        max-width: 550px;
+        padding: 2.5rem;
+
+        /* This forces vertical centering if the parent allows it */
+        margin: auto;
+
+        overflow-y: auto;
+    }
+
+    /* Standard Desktop Typography */
+    .temp-display { font-size: 5rem; }
+    .city-name { font-size: 1.8rem; }
+
+    /* Ensure the 7-day list is visible but neat */
+    .daily-forecast-scroll {
+        max-height: 200px;
+        padding: 5px 15px;
+    }
+}
+
+/* --- MOBILE LANDSCAPE FIX --- */
+/* Fixes layout when phone is turned sideways */
+@media (max-width: 900px) and (orientation: landscape) {
+    .weather-container {
+        height: auto !important;
+        min-height: 100vh;
+        padding: 20px 0;
+        overflow-y: auto;
+    }
+
+    .glass-panel {
+        max-height: none !important;
+        height: auto !important;
+        margin: 20px auto !important;
+        overflow-y: visible !important;
+    }
+
+    /* Forces canvas to resize correctly on rotate */
+    #canvas-container canvas {
+        width: 100vw;
+        height: 100vh;
+    }
+}
