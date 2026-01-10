@@ -440,7 +440,6 @@ export default class extends Controller {
         const cityTime = new Date(nowUTC + (utcOffsetSeconds * 1000));
         const currentHour = cityTime.getHours();
 
-        // 1. Check if it's "My Location" via GPS distance (20km threshold)
         let isMyLocation = false;
         if (this.appState.userLocation) {
             const dist = this.calculateDistance(
@@ -452,13 +451,8 @@ export default class extends Controller {
             if (dist < 20) isMyLocation = true;
         }
 
-        // 2. NEW LOGIC: Check if we are in the Same Timezone
-        // JS getTimezoneOffset returns minutes (inverted). E.g. UTC+2 = -120.
-        // We multiply by -60 to get Seconds matching Open-Meteo format.
         const userBrowserOffsetSeconds = new Date().getTimezoneOffset() * -60;
         const isSameTimeZone = userBrowserOffsetSeconds === utcOffsetSeconds;
-
-        // Show "Now" if it's my location OR if the timezones match
         const showNowLabel = isMyLocation || isSameTimeZone;
 
         this.cityNameTarget.textContent = city;
@@ -475,7 +469,6 @@ export default class extends Controller {
         this.humidityTarget.textContent = current.relative_humidity_2m;
         this.renderAqiSummary(aqi);
 
-        // Pass 'showNowLabel' instead of just 'isMyLocation'
         this.renderHourly(hourly, currentHour, showNowLabel);
 
         this.render7DayForecast(daily);
@@ -496,6 +489,10 @@ export default class extends Controller {
         this.precipSumTarget.textContent = daily.precipitation_sum[0];
 
         this.handleTheme(cityTime, daily, current.weather_code);
+
+        // --- NEW LINE: Scroll the main card to top ---
+        const glassPanel = this.element.querySelector('.glass-panel');
+        if (glassPanel) glassPanel.scrollTop = 0;
 
         this.resultTarget.style.display = 'flex';
         this.resultTarget.style.flexDirection = 'column';
@@ -710,8 +707,7 @@ export default class extends Controller {
 
                 // 3. Show Skeleton
                 this.skeletonTarget.style.display = 'flex';
-                // Force a reflow so the transition works
-                void this.skeletonTarget.offsetWidth;
+                void this.skeletonTarget.offsetWidth; // Force reflow
 
                 // 4. Fade in Skeleton
                 requestAnimationFrame(() => {
@@ -728,12 +724,17 @@ export default class extends Controller {
             this.skeletonTarget.style.opacity = '0';
 
             setTimeout(() => {
-                // 2. Hide Skeleton completely (CRITICAL STEP)
+                // 2. Hide Skeleton completely
                 this.skeletonTarget.style.display = 'none';
 
-                // 3. Prepare Result (Invisible first)
+                // 3. Prepare Result
                 this.resultTarget.style.display = 'flex';
                 this.resultTarget.style.flexDirection = 'column';
+
+                // --- NEW FIX: Reset Widget Scrolls Immediately on Display ---
+                this.hourlyContainerTarget.scrollLeft = 0;
+                this.dailyContainerTarget.scrollTop = 0;
+
                 this.resultTarget.style.opacity = '0';
 
                 // 4. TRIGGER THE GRAND ENTRANCE
