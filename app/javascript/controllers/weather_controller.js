@@ -110,7 +110,7 @@ export default class extends Controller {
         };
 
         this.selectedIndex = -1;
-        // Add this right before this.initCanvas();
+
         this.animate = this.animate.bind(this);
         this.abortController = new AbortController(); // We'll use this for cleanup later
         this.initCanvas();
@@ -146,7 +146,7 @@ export default class extends Controller {
             this.appState.mouse.y = null;
         };
 
-        // Inside your connect() method, update the handler definition:
+
         this.visibilityHandler = () => {
             if (document.visibilityState === "visible") {
                 // 1. Resume Animation
@@ -169,7 +169,7 @@ export default class extends Controller {
         window.addEventListener('touchmove', this.touchMoveHandler);
         window.addEventListener('mouseout', this.mouseOutHandler);
 
-        // Add Visibility Listener
+
         document.addEventListener("visibilitychange", this.visibilityHandler);
 
         // 2. REFRESH TIMER (Every 15 minutes while app is open)
@@ -490,7 +490,7 @@ export default class extends Controller {
 
         this.handleTheme(cityTime, daily, current.weather_code);
 
-        // --- NEW LINE: Scroll the main card to top ---
+        // --- Scroll the main card to top ---
         const glassPanel = this.element.querySelector('.glass-panel');
         if (glassPanel) glassPanel.scrollTop = 0;
 
@@ -521,7 +521,6 @@ export default class extends Controller {
 
             let displayTime = `${displayHourNum}:00`;
 
-            // USE THE NEW FLAG HERE
             if (i === 0 && showNowLabel) {
                 displayTime = "Now";
             }
@@ -575,7 +574,6 @@ export default class extends Controller {
         }
     }
 
-    // CLEANED: Removed event listeners (they are handled in connect/disconnect)
     initCanvas() {
         this.ctx = this.canvasTarget.getContext('2d');
         this.resizeCanvas();
@@ -585,7 +583,7 @@ export default class extends Controller {
     }
 
 resizeCanvas() {
-        // Updated to handle mobile rotation better
+
         const width = window.innerWidth || document.documentElement.clientWidth;
         const height = window.innerHeight || document.documentElement.clientHeight;
         const dpr = window.devicePixelRatio || 1;
@@ -730,20 +728,20 @@ resizeCanvas() {
             this.skeletonTarget.style.opacity = '0';
 
             setTimeout(() => {
-                // 2. Hide Skeleton completely
+                // Hide Skeleton completely
                 this.skeletonTarget.style.display = 'none';
 
-                // 3. Prepare Result
+                // Prepare Result
                 this.resultTarget.style.display = 'flex';
                 this.resultTarget.style.flexDirection = 'column';
 
-                // --- NEW FIX: Reset Widget Scrolls Immediately on Display ---
+                // --- Reset Widget Scrolls Immediately on Display ---
                 this.hourlyContainerTarget.scrollLeft = 0;
                 this.dailyContainerTarget.scrollTop = 0;
 
                 this.resultTarget.style.opacity = '0';
 
-                // 4. TRIGGER THE GRAND ENTRANCE
+                // TRIGGER THE GRAND ENTRANCE
                 requestAnimationFrame(() => {
                     this.resultTarget.classList.add('grand-entrance');
                 });
