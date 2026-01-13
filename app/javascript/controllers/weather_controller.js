@@ -8,82 +8,97 @@ const CONFIG = {
 };
 
 // Particle Class Definition
+// V2 PARTICLE CLASS: Supports Orbs and Rain
 class Mushi {
-    constructor(canvasWidth, canvasHeight, theme, weatherType, x = null, y = null) {
+    constructor(canvasWidth, canvasHeight, theme, weatherType) {
         this.canvasWidth = canvasWidth;
         this.canvasHeight = canvasHeight;
-        this.theme = theme;
-        this.weatherType = weatherType;
-        this.reset();
-        if (x && y) {
-            this.x = x;
-            this.y = y;
-        } else {
-            this.y = Math.random() * this.canvasHeight;
-        }
+        this.reset(theme, weatherType);
     }
 
-    reset() {
+    reset(theme, weatherType) {
+        this.theme = theme;
+        this.weatherType = weatherType;
         this.x = Math.random() * this.canvasWidth;
-        this.y = this.weatherType === 'clear' ? this.canvasHeight + 10 : -10;
-        this.size = Math.random() * 2 + 1;
-        this.speedY = Math.random() * CONFIG.baseSpeed + 0.2;
-        this.speedX = (Math.random() - 0.5) * 0.5;
-        this.opacity = Math.random() * 0.5 + 0.2;
+
+        // Context-aware spawning
+        const isRain = ['rain', 'drizzle', 'thunderstorm'].some(t => this.weatherType.includes(t));
+
+        if (isRain) {
+            this.y = Math.random() * -100; // Start above screen
+            this.speedY = Math.random() * 15 + 10; // Fast rain
+            this.speedX = (Math.random() - 0.5) * 2; // Slight wind
+            this.size = Math.random() * 20 + 10; // Length of rain drop
+        } else {
+            // Floating Orbs
+            this.y = Math.random() * this.canvasHeight;
+            this.speedY = Math.random() * 0.5 + 0.1;
+            this.speedX = (Math.random() - 0.5) * 0.5;
+            this.size = Math.random() * 3 + 1; // Radius
+        }
+
+        this.opacity = 0;
         this.growing = true;
     }
 
     update(mouseX, mouseY, weatherType, theme) {
-        this.weatherType = weatherType;
-        this.theme = theme;
+        const isRain = ['rain', 'drizzle', 'thunderstorm'].some(t => weatherType.includes(t));
 
-        if (this.weatherType === 'clear') {
-            this.y -= this.speedY * 0.5;
-            if (this.y < -10) this.reset();
-        } else {
-            this.y += this.speedY;
-            if (this.y > this.canvasHeight + 10) this.reset();
-        }
+        this.y += this.speedY;
         this.x += this.speedX;
 
-        if (mouseX != null) {
+        // Reset if off screen
+        if (this.y > this.canvasHeight + 50) {
+            this.reset(theme, weatherType);
+        }
+
+        // Mouse Interaction (Push)
+        if (mouseX != null && !isRain) {
             const dx = mouseX - this.x;
             const dy = mouseY - this.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
-            if (dist < CONFIG.interactionRadius) {
-                const force = (CONFIG.interactionRadius - dist) / CONFIG.interactionRadius;
-                this.x -= (dx / dist) * force * 8;
-                this.y -= (dy / dist) * force * 8;
+            if (dist < 150) {
+                const force = (150 - dist) / 150;
+                this.x -= (dx / dist) * force * 5;
+                this.y -= (dy / dist) * force * 5;
             }
         }
 
+        // Twinkle/Fade logic
         if (this.growing) {
-            this.opacity += 0.01;
-            if (this.opacity >= 0.8) this.growing = false;
+            this.opacity += 0.02;
+            if (this.opacity >= 0.6) this.growing = false;
         } else {
             this.opacity -= 0.01;
-            if (this.opacity <= 0.2) this.growing = true;
+            if (this.opacity <= 0.1) this.growing = true;
         }
     }
 
     draw(ctx) {
+        const isRain = ['rain', 'drizzle', 'thunderstorm'].some(t => this.weatherType.includes(t));
+
         ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
 
-        if (this.theme === 'day') {
-            ctx.fillStyle = `rgba(255, 230, 150, ${this.opacity})`;
-            ctx.shadowColor = "rgba(255, 215, 0, 0.5)";
-        } else if (this.theme === 'morning') {
-            ctx.fillStyle = `rgba(255, 200, 200, ${this.opacity})`;
-            ctx.shadowColor = "rgba(255, 100, 100, 0.5)";
+        if (isRain) {
+            // Draw Rain Line
+            ctx.moveTo(this.x, this.y);
+            ctx.lineTo(this.x + this.speedX, this.y + this.size);
+            ctx.strokeStyle = `rgba(200, 230, 255, ${this.opacity * 0.8})`;
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
         } else {
-            ctx.fillStyle = `rgba(200, 255, 255, ${this.opacity})`;
-            ctx.shadowColor = "rgba(0, 255, 255, 0.8)";
-        }
+            // Draw Glowing Orb
+            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+            let color = '255, 255, 255'; // Default white
+            if (this.theme === 'day') color = '255, 220, 150'; // Gold
+            if (this.theme === 'dusk') color = '255, 180, 180'; // Pinkish
 
-        ctx.shadowBlur = this.size * 2;
-        ctx.fill();
-        ctx.shadowBlur = 0;
+            ctx.fillStyle = `rgba(${color}, ${this.opacity})`;
+            ctx.shadowColor = `rgba(${color}, 0.5)`;
+            ctx.shadowBlur = 10;
+            ctx.fill();
+            ctx.shadowBlur = 0; // Reset
+        }
     }
 }
 
@@ -880,5 +895,28 @@ resizeCanvas() {
             requestAnimationFrame(step);
         };
         requestAnimationFrame(step);
+    }
+
+    // --- SEARCH UI LOGIC ---
+    toggleSearch(e) {
+        if(e) e.preventDefault();
+        const wrapper = this.element.querySelector('.search-wrapper');
+        const input = this.cityInputTarget;
+
+        wrapper.classList.toggle('active');
+        if (wrapper.classList.contains('active')) {
+            input.focus();
+        }
+    }
+
+    collapseSearch() {
+        // Delay to allow click events on results to fire first
+        setTimeout(() => {
+            const wrapper = this.element.querySelector('.search-wrapper');
+            // Only collapse if input is empty
+            if (this.cityInputTarget.value === '') {
+                wrapper.classList.remove('active');
+            }
+        }, 200);
     }
 }
