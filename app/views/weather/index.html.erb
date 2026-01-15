@@ -1,103 +1,92 @@
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Space+Grotesk:wght@300;500;700&display=swap" rel="stylesheet">
+<div class="glass-panel">
 
-<div data-controller="weather">
-    <div id="canvas-container">
-        <canvas data-weather-target="canvas"></canvas>
-    </div>
-    <div class="overlay"></div>
-
-    <div id="errorAlert" data-weather-target="errorAlert" class="alert-pill">
-        <i class="ph ph-warning-circle"></i>
-        <span data-weather-target="errorMsg">Error</span>
-    </div>
-
-    <div class="weather-container">
-        <div class="glass-panel">
-
-            <div class="panel-header">
-                <div class="location-group">
-                    <h2 class="city-name" data-weather-target="cityName">--</h2>
-                    <span class="country-badge" data-weather-target="countryCode">--</span>
-                </div>
-
-                <div class="search-wrapper">
-                    <form data-action="submit->weather#search">
-                        <input type="text"
-                               data-weather-target="cityInput"
-                               data-action="input->weather#handleInput keydown->weather#handleKeydown blur->weather#collapseSearch"
-                               class="stealth-input"
-                               placeholder="Search..."
-                               autocomplete="off">
-                        <button type="button" class="search-btn" data-action="click->weather#toggleSearch">
-                            <i class="ph ph-magnifying-glass"></i>
-                        </button>
-                    </form>
-                    <div data-weather-target="searchResults" class="search-results"></div>
-                </div>
+    <div class="panel-header">
+        <div class="location-group">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <h2 class="city-name" data-weather-target="cityName">--</h2>
+                <button class="fav-btn" data-action="click->weather#toggleFavorite">
+                    <i class="ph ph-star" data-weather-target="favIcon"></i>
+                </button>
             </div>
+            <span class="country-badge" data-weather-target="countryCode">--</span>
+        </div>
 
-            <div class="hero-section" data-weather-target="result">
-                <div class="hero-main">
-                    <h1 class="temp-display"><span data-weather-target="tempValue">--</span>°</h1>
-                    <div class="weather-status">
-                        <div class="lead" data-weather-target="weatherDesc">--</div>
-                        <div class="date-badge">
-                            <span data-weather-target="dateDisplay">--</span>
-                            <span class="dot-separator">•</span>
-                            <span data-weather-target="timeBadge">--</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bento-grid">
-                    <div class="bento-card mini">
-                        <div class="bento-label">Wind</div>
-                        <div class="bento-value"><span data-weather-target="windSpeed">--</span> <small>kph</small></div>
-                        <i class="ph ph-wind bento-icon"></i>
-                    </div>
-                    <div class="bento-card mini">
-                        <div class="bento-label">Humidity</div>
-                        <div class="bento-value"><span data-weather-target="humidity">--</span><small>%</small></div>
-                        <i class="ph ph-drop bento-icon"></i>
-                    </div>
-                    <div class="bento-card mini">
-                        <div class="bento-label">RealFeel</div>
-                        <div class="bento-value"><span data-weather-target="realFeel">--</span>°</div>
-                        <i class="ph ph-thermometer bento-icon"></i>
-                    </div>
-                    <div class="bento-card mini">
-                        <div class="bento-label">UV Index</div>
-                        <div class="bento-value" data-weather-target="uvIndex">--</div>
-                        <i class="ph ph-sun-dim bento-icon"></i>
-                    </div>
-                </div>
-
-                <div class="hourly-section">
-                    <div class="hourly-container" data-weather-target="hourlyContainer"></div>
-                </div>
-
-                <div class="weekly-section">
-                    <div class="section-header">7-Day Forecast</div>
-                    <div class="daily-forecast-scroll" data-weather-target="dailyContainer"></div>
-                </div>
-
-                <div class="meta-footer">
-                    <span>Data: Open-Meteo</span>
-                    <span>v2.0</span>
-                </div>
-            </div>
-
-            <div data-weather-target="skeleton" class="v2-skeleton" style="display: none;">
-                <div class="sk-line title"></div>
-                <div class="sk-line big-temp"></div>
-                <div class="sk-grid">
-                    <div class="sk-box"></div><div class="sk-box"></div>
-                    <div class="sk-box"></div><div class="sk-box"></div>
-                </div>
-            </div>
-
+        <div class="search-wrapper">
+            <form data-action="submit->weather#search">
+                <input type="text"
+                       data-weather-target="cityInput"
+                       data-action="input->weather#handleInput keydown->weather#handleKeydown blur->weather#collapseSearch"
+                       class="stealth-input"
+                       placeholder="Search..."
+                       autocomplete="off">
+                <button type="button" class="search-btn" data-action="click->weather#toggleSearch">
+                    <i class="ph ph-magnifying-glass"></i>
+                </button>
+            </form>
+            <div data-weather-target="searchResults" class="search-results"></div>
         </div>
     </div>
+
+    <div class="favorites-drawer" data-weather-target="favoritesList"></div>
+
+    <div class="hero-section" data-weather-target="result">
+        <div class="hero-main">
+            <h1 class="temp-display"><span data-weather-target="tempValue">--</span>°</h1>
+            <div class="weather-status">
+                <div class="lead" data-weather-target="weatherDesc">--</div>
+                <div class="date-badge">
+                    <span data-weather-target="dateDisplay">--</span>
+                    <span class="dot-separator">•</span>
+                    <span data-weather-target="timeBadge">--</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="bento-grid">
+            <div class="bento-card mini">
+                <div class="bento-label">Wind</div>
+                <div class="bento-value"><span data-weather-target="windSpeed">--</span> <small>kph</small></div>
+                <i class="ph ph-wind bento-icon"></i>
+            </div>
+            <div class="bento-card mini">
+                <div class="bento-label">Humidity</div>
+                <div class="bento-value"><span data-weather-target="humidity">--</span><small>%</small></div>
+                <i class="ph ph-drop bento-icon"></i>
+            </div>
+            <div class="bento-card mini">
+                <div class="bento-label">RealFeel</div>
+                <div class="bento-value"><span data-weather-target="realFeel">--</span>°</div>
+                <i class="ph ph-thermometer bento-icon"></i>
+            </div>
+            <div class="bento-card mini">
+                <div class="bento-label">UV Index</div>
+                <div class="bento-value" data-weather-target="uvIndex">--</div>
+                <i class="ph ph-sun-dim bento-icon"></i>
+            </div>
+        </div>
+
+        <div class="hourly-section" style="position: relative; height: 180px; width: 100%;">
+            <canvas data-weather-target="hourlyChart"></canvas>
+        </div>
+
+        <div class="weekly-section">
+            <div class="section-header">7-Day Forecast</div>
+            <div class="daily-forecast-scroll" data-weather-target="dailyContainer"></div>
+        </div>
+
+        <div class="meta-footer">
+            <span>Data: Open-Meteo</span>
+            <span>v2.0</span>
+        </div>
+    </div>
+
+    <div data-weather-target="skeleton" class="v2-skeleton" style="display: none;">
+        <div class="sk-line title"></div>
+        <div class="sk-line big-temp"></div>
+        <div class="sk-grid">
+            <div class="sk-box"></div><div class="sk-box"></div>
+            <div class="sk-box"></div><div class="sk-box"></div>
+        </div>
+    </div>
+
 </div>

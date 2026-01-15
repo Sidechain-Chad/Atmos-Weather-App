@@ -211,6 +211,34 @@ body.theme-day.weather-clear { background: linear-gradient(180deg, #3a3a3a 0%, #
 .sk-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .sk-box { height: 80px; background: rgba(255,255,255,0.1); border-radius: 16px; }
 
+/* FAVORITE BUTTON */
+.fav-btn {
+    background: transparent; border: none; color: white;
+    cursor: pointer; font-size: 1.2rem; opacity: 0.3;
+    transition: all 0.3s ease; padding: 0;
+}
+.fav-btn.active { opacity: 1; color: #ffd700; transform: scale(1.1); }
+.fav-btn:hover { opacity: 0.8; }
+
+/* FAVORITES DRAWER (Simple Dropdown) */
+.favorites-drawer {
+    display: flex; gap: 10px; overflow-x: auto;
+    padding: 10px 0; margin-bottom: 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    scrollbar-width: none; /* Hide scrollbar */
+}
+.favorites-drawer:empty { display: none; } /* Hide if empty */
+
+.fav-chip {
+    background: rgba(255,255,255,0.1); border-radius: 20px;
+    padding: 6px 12px; font-size: 0.8rem; white-space: nowrap;
+    cursor: pointer; border: 1px solid transparent;
+    transition: 0.2s; display: flex; align-items: center; gap: 5px;
+}
+.fav-chip:hover { background: rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.3); }
+.fav-remove { opacity: 0.5; font-size: 1rem; margin-left: 5px; }
+.fav-remove:hover { opacity: 1; color: #ff6b6b; }
+
 /* --- RESPONSIVENESS --- */
 
 /* Mobile Portrait */
