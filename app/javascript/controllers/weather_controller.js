@@ -1,884 +1,555 @@
 import { Controller } from "@hotwired/stimulus"
 
-// Configuration constants
-const CONFIG = {
-    particleCount: 120,
-    baseSpeed: 0.8,
-    interactionRadius: 150,
-};
+// ATMOS — apple layout, ported to Stimulus.
+// Live data from Open-Meteo. Renders the hero, hourly, 7-day and detail cards,
+// and drives the animated sky background + weather FX overlays.
 
-// Particle Class Definition
-class Mushi {
-    constructor(canvasWidth, canvasHeight, theme, weatherType, x = null, y = null) {
-        this.canvasWidth = canvasWidth;
-        this.canvasHeight = canvasHeight;
-        this.theme = theme;
-        this.weatherType = weatherType;
-        this.reset();
-        if (x && y) {
-            this.x = x;
-            this.y = y;
-        } else {
-            this.y = Math.random() * this.canvasHeight;
-        }
-    }
+// ---------- WMO weather_code -> condition label + icon kind ----------
+const WMO = {
+  0:["Clear","clear"], 1:["Mainly Clear","clear"], 2:["Partly Cloudy","partly"], 3:["Overcast","cloud"],
+  45:["Fog","fog"], 48:["Rime Fog","fog"],
+  51:["Light Drizzle","drizzle"], 53:["Drizzle","drizzle"], 55:["Heavy Drizzle","drizzle"],
+  56:["Freezing Drizzle","sleet"], 57:["Freezing Drizzle","sleet"],
+  61:["Light Rain","rain"], 63:["Rain","rain"], 65:["Heavy Rain","rain"],
+  66:["Freezing Rain","sleet"], 67:["Freezing Rain","sleet"],
+  71:["Light Snow","snow"], 73:["Snow","snow"], 75:["Heavy Snow","snow"], 77:["Snow Grains","snow"],
+  80:["Rain Showers","rain"], 81:["Rain Showers","rain"], 82:["Violent Showers","rain"],
+  85:["Snow Showers","snow"], 86:["Snow Showers","snow"],
+  95:["Thunderstorm","thunder"], 96:["Thunderstorm + Hail","hail"], 99:["Thunderstorm + Hail","hail"],
+}
+const decode = c => WMO[c] || ["—","cloud"]
 
-    reset() {
-        this.x = Math.random() * this.canvasWidth;
-        this.y = this.weatherType === 'clear' ? this.canvasHeight + 10 : -10;
-        this.size = Math.random() * 2 + 1;
-        this.speedY = Math.random() * CONFIG.baseSpeed + 0.2;
-        this.speedX = (Math.random() - 0.5) * 0.5;
-        this.opacity = Math.random() * 0.5 + 0.2;
-        this.growing = true;
-    }
+// ---------- SVG weather glyphs ----------
+function wxIcon(kind, size = 28) {
+  const o = `xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 32 32"`
+  switch (kind) {
+    case "clear": return `<svg ${o}>
+      <defs><radialGradient id="sg${size}"><stop offset="0%" stop-color="#ffe8a8"/><stop offset="100%" stop-color="#f5a635"/></radialGradient></defs>
+      <circle cx="16" cy="16" r="6" fill="url(#sg${size})"/>
+      <g stroke="#ffd78a" stroke-width="2" stroke-linecap="round">
+        <line x1="16" y1="3" x2="16" y2="6"/><line x1="16" y1="26" x2="16" y2="29"/>
+        <line x1="3" y1="16" x2="6" y2="16"/><line x1="26" y1="16" x2="29" y2="16"/>
+        <line x1="6" y1="6" x2="8" y2="8"/><line x1="24" y1="24" x2="26" y2="26"/>
+        <line x1="6" y1="26" x2="8" y2="24"/><line x1="24" y1="8" x2="26" y2="6"/></g></svg>`
+    case "partly": return `<svg ${o}>
+      <circle cx="11" cy="11" r="4.5" fill="#ffd78a"/>
+      <path d="M9 24h13a4.5 4.5 0 0 0 0-9 6 6 0 0 0-11.6-1.5A4 4 0 0 0 9 24z" fill="#f0f4fa" stroke="#c8d5e6" stroke-width="0.8"/></svg>`
+    case "rain": case "drizzle": return `<svg ${o}>
+      <path d="M9 20h14a5 5 0 0 0 0-10 6.5 6.5 0 0 0-12.5-1.5A4 4 0 0 0 9 20z" fill="#c8d5e6"/>
+      <g stroke="#5aa0e0" stroke-width="2" stroke-linecap="round">
+        <line x1="11" y1="23" x2="10" y2="27"/><line x1="16" y1="23" x2="15" y2="28"/><line x1="21" y1="23" x2="20" y2="27"/></g></svg>`
+    case "snow": case "sleet": return `<svg ${o}>
+      <path d="M9 20h14a5 5 0 0 0 0-10 6.5 6.5 0 0 0-12.5-1.5A4 4 0 0 0 9 20z" fill="#e5ecf5"/>
+      <g fill="#fff"><circle cx="11" cy="26" r="1.4"/><circle cx="16" cy="27" r="1.4"/><circle cx="21" cy="26" r="1.4"/></g></svg>`
+    case "thunder": case "hail": return `<svg ${o}>
+      <path d="M9 18h14a5 5 0 0 0 0-10 6.5 6.5 0 0 0-12.5-1.5A4 4 0 0 0 9 18z" fill="#aab6c8"/>
+      <path d="M16 18l-4 7h3l-2 5 7-9h-4l3-3z" fill="#ffd24a"/></svg>`
+    default: return `<svg ${o}>
+      <path d="M9 24h14a5 5 0 0 0 0-10 6.5 6.5 0 0 0-12.5-1.5A4 4 0 0 0 9 24z" fill="#dee6f2" stroke="#b8c5d8" stroke-width="0.8"/></svg>`
+  }
+}
 
-    update(mouseX, mouseY, weatherType, theme) {
-        this.weatherType = weatherType;
-        this.theme = theme;
+// ---------- sky palettes ----------
+const PALETTES = {
+  dawn:  { top:"#2c1c3a", mid:"#8a4a5a", low:"#e09566", hz:"#f2c07a", sun:"radial-gradient(circle, #ffd89a, #f29566 60%, transparent 75%)", stars:false, pos:{left:"15%",top:"65%"} },
+  day:   { top:"#1a4e82", mid:"#3a7cb8", low:"#7fb5d8", hz:"#cfe3f0", sun:"radial-gradient(circle, #fff0b4, #f8c05a 50%, transparent 70%)", stars:false, pos:{left:"70%",top:"15%"} },
+  dusk:  { top:"#1a1a3a", mid:"#6b3a6a", low:"#d66b4a", hz:"#f0955a", sun:"radial-gradient(circle, #ff9e6a, #e55a3a 60%, transparent 75%)", stars:false, pos:{left:"80%",top:"60%"} },
+  night: { top:"#050812", mid:"#0d1530", low:"#1a2a50", hz:"#2a3a66", sun:"radial-gradient(circle, #e8ecff, rgba(200,210,255,0.4) 50%, transparent 70%)", stars:true, pos:{left:"72%",top:"20%"} },
+}
+const phaseFromHour = h => (h < 6 || h >= 20) ? "night" : h < 8 ? "dawn" : h < 18 ? "day" : "dusk"
 
-        if (this.weatherType === 'clear') {
-            this.y -= this.speedY * 0.5;
-            if (this.y < -10) this.reset();
-        } else {
-            this.y += this.speedY;
-            if (this.y > this.canvasHeight + 10) this.reset();
-        }
-        this.x += this.speedX;
+// How much each condition greys/darkens the sky (0 = clear, 1 = fully overcast/stormy).
+const OVERCAST = {
+  clear: 0, partly: 0.18, cloud: 0.55, overcast: 0.7,
+  fog: 0.75, haze: 0.4, drizzle: 0.6, rain: 0.72,
+  sleet: 0.72, snow: 0.5, hail: 0.8, thunder: 0.88,
+}
 
-        if (mouseX != null) {
-            const dx = mouseX - this.x;
-            const dy = mouseY - this.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            if (dist < CONFIG.interactionRadius) {
-                const force = (CONFIG.interactionRadius - dist) / CONFIG.interactionRadius;
-                this.x -= (dx / dist) * force * 8;
-                this.y -= (dy / dist) * force * 8;
-            }
-        }
-
-        if (this.growing) {
-            this.opacity += 0.01;
-            if (this.opacity >= 0.8) this.growing = false;
-        } else {
-            this.opacity -= 0.01;
-            if (this.opacity <= 0.2) this.growing = true;
-        }
-    }
-
-    draw(ctx) {
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-
-        if (this.theme === 'day') {
-            ctx.fillStyle = `rgba(255, 230, 150, ${this.opacity})`;
-            ctx.shadowColor = "rgba(255, 215, 0, 0.5)";
-        } else if (this.theme === 'morning') {
-            ctx.fillStyle = `rgba(255, 200, 200, ${this.opacity})`;
-            ctx.shadowColor = "rgba(255, 100, 100, 0.5)";
-        } else {
-            ctx.fillStyle = `rgba(200, 255, 255, ${this.opacity})`;
-            ctx.shadowColor = "rgba(0, 255, 255, 0.8)";
-        }
-
-        ctx.shadowBlur = this.size * 2;
-        ctx.fill();
-        ctx.shadowBlur = 0;
-    }
+// Blend a hex color toward an overcast grey by amount t (0..1).
+function overcastBlend(hex, t, greyHex = "#5a626e") {
+  const h2r = h => { const n = parseInt(h.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255] }
+  const [r1, g1, b1] = h2r(hex), [r2, g2, b2] = h2r(greyHex)
+  const mix = (a, b) => Math.round(a + (b - a) * t)
+  const c = [mix(r1, r2), mix(g1, g2), mix(b1, b2)]
+  return "#" + c.map(v => v.toString(16).padStart(2, "0")).join("")
 }
 
 export default class extends Controller {
-    static targets = [
-        "canvas", "cityInput", "spinner", "result", "skeleton",
-        "errorAlert", "errorMsg", "searchResults",
-        "cityName", "countryCode", "timeBadge", "tempValue", "weatherDesc",
-        "dateDisplay", "windSpeed", "humidity", "aqiSummary", "detailsWrapper",
-        "caretIcon", "realFeel", "aqiValue", "uvIndex", "visibility",
-        "windGusts", "windDir", "dewPoint", "cloudCover", "pressure",
-        "dayHigh", "nightLow", "precipProb", "precipSum", "hourlyContainer", "dailyContainer"
-    ]
+  static targets = [
+    "skyBg", "skySun", "skyStars", "cloudOverlay", "rainOverlay", "snowOverlay",
+    "fogOverlay", "thunderOverlay", "hailOverlay",
+    "cityInput", "spinner", "searchResults", "errorAlert", "errorMsg",
+    "hero", "hourly", "daily", "cards", "unitMetric", "unitImperial"
+  ]
 
-    connect() {
-        this.appState = {
-            theme: 'night',
-            weather: 'snow',
-            particles: [],
-            mouse: { x: null, y: null },
-            userLocation: null,
-            lastFetchTime: 0,
-            currentCity: null
-        };
+  connect() {
+    this.units = localStorage.getItem("atmos.units") || "metric"
+    this.syncUnitButtons()
+    this.selectedIndex = -1
+    this.initStars()
 
-        this.selectedIndex = -1;
+    // Always load something immediately so the page is never blank,
+    // then upgrade to the user's real location if geolocation is granted.
+    const lastCity = localStorage.getItem("atmos.lastCity") || "Cape Town"
+    this.fetchWeather(lastCity)
 
-        this.animate = this.animate.bind(this);
-        this.abortController = new AbortController(); // We'll use this for cleanup later
-        this.initCanvas();
-        this.animate();
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        p => this.fetchByCoords(p.coords.latitude, p.coords.longitude),
+        () => { /* keep the city already loaded */ },
+        { timeout: 8000, maximumAge: 600000 }
+      )
+    }
+  }
 
-        // --- INIT SCROLL PHYSICS ---
-        this.initHourlyScroll();
-        this.initDailyScroll();
+  disconnect() {
+    if (this._thunderInterval) clearInterval(this._thunderInterval)
+  }
 
-        this.getUserLocation();
+  // ============ units ============
+  setUnits(e) {
+    this.units = e.currentTarget.dataset.units
+    localStorage.setItem("atmos.units", this.units)
+    this.syncUnitButtons()
+    if (this.weatherData) this.render(this.weatherData)
+  }
+  syncUnitButtons() {
+    this.unitMetricTarget.classList.toggle("active", this.units === "metric")
+    this.unitImperialTarget.classList.toggle("active", this.units === "imperial")
+  }
+  t(c)    { return this.units === "metric" ? Math.round(c) : Math.round(c * 9 / 5 + 32) }
+  wind(k) { return this.units === "metric" ? Math.round(k) : Math.round(k * 0.621371) }
+  get windUnit() { return this.units === "metric" ? "km/h" : "mph" }
 
-        // --- HANDLERS ---
-        this.clickOutsideHandler = (e) => {
-            if (!this.element.contains(e.target)) {
-                this.searchResultsTarget.classList.remove('active');
-            }
-        };
+  // ============ search ============
+  async handleInput() {
+    const q = this.cityInputTarget.value.trim()
+    clearTimeout(this.searchTimeout)
+    if (q.length < 2) { this.searchResultsTarget.innerHTML = ""; return }
+    this.searchTimeout = setTimeout(async () => {
+      try {
+        const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=5&language=en&format=json`)
+        const json = await res.json()
+        this.renderSearch(json.results || [])
+      } catch { /* ignore */ }
+    }, 250)
+  }
+  renderSearch(results) {
+    this.selectedIndex = -1
+    if (!results.length) { this.searchResultsTarget.innerHTML = ""; return }
+    this.searchResultsTarget.innerHTML = results.map((r, i) => `
+      <div class="search-result" data-idx="${i}"
+           data-lat="${r.latitude}" data-lon="${r.longitude}"
+           data-name="${r.name}" data-country="${r.country_code || ""}">
+        <div><div>${r.name}</div><div class="region">${[r.admin1, r.country].filter(Boolean).join(", ")}</div></div>
+      </div>`).join("")
+    this.searchResultsTarget.querySelectorAll(".search-result").forEach(el => {
+      el.addEventListener("mousedown", () => {
+        const d = el.dataset
+        this.cityInputTarget.value = d.name
+        this.searchResultsTarget.innerHTML = ""
+        this.executeFetch(+d.lat, +d.lon, d.name, d.country)
+      })
+    })
+  }
+  handleKeydown(e) {
+    const items = this.searchResultsTarget.querySelectorAll(".search-result")
+    if (!items.length) return
+    if (e.key === "ArrowDown") { this.selectedIndex = Math.min(this.selectedIndex + 1, items.length - 1); e.preventDefault() }
+    else if (e.key === "ArrowUp") { this.selectedIndex = Math.max(this.selectedIndex - 1, 0); e.preventDefault() }
+    else if (e.key === "Enter") { e.preventDefault(); if (items[this.selectedIndex]) items[this.selectedIndex].dispatchEvent(new Event("mousedown")); return }
+    items.forEach((el, i) => el.classList.toggle("active", i === this.selectedIndex))
+  }
 
-        this.resizeHandler = this.resizeCanvas.bind(this);
+  // ============ fetch ============
+  async fetchByCoords(lat, lon) {
+    let name = "Current Location", country = ""
+    try {
+      const r = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`)
+      const j = await r.json(); name = j.city || j.locality || name; country = j.countryCode || ""
+    } catch { /* ignore */ }
+    this.executeFetch(lat, lon, name, country)
+  }
+  async fetchWeather(city) {
+    try {
+      const r = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en&format=json`)
+      const j = await r.json()
+      if (!j.results || !j.results.length) return this.showError(`Couldn't find "${city}"`)
+      const g = j.results[0]
+      this.executeFetch(g.latitude, g.longitude, g.name, g.country_code || "")
+    } catch { this.showError("Network error") }
+  }
+  async executeFetch(lat, lon, name, country) {
+    this.spinnerTarget.style.display = "block"
+    try {
+      const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+        `&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code,` +
+        `cloud_cover,pressure_msl,wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,dew_point_2m,uv_index` +
+        `&hourly=temperature_2m,weather_code,precipitation_probability` +
+        `&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,uv_index_max,` +
+        `precipitation_sum,precipitation_probability_max&timezone=auto&forecast_days=7`
+      const aqiUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=us_aqi`
+      const [wRes, aRes] = await Promise.all([fetch(weatherUrl), fetch(aqiUrl)])
+      const w = await wRes.json()
+      const a = await aRes.json().catch(() => ({}))
+      this.weatherData = { w, aqi: a?.current?.us_aqi ?? null, name, country }
+      localStorage.setItem("atmos.lastCity", name)
+      this.render(this.weatherData)
+    } catch (e) {
+      console.error("ATMOS fetch/render error:", e)
+      this.showError("Couldn't load weather")
+    } finally {
+      this.spinnerTarget.style.display = "none"
+    }
+  }
 
-        this.mouseMoveHandler = (e) => {
-            this.appState.mouse.x = e.x;
-            this.appState.mouse.y = e.y;
-        };
-        this.touchMoveHandler = (e) => {
-            if (e.touches[0]) {
-                this.appState.mouse.x = e.touches[0].clientX;
-                this.appState.mouse.y = e.touches[0].clientY;
-            }
-        };
-        this.mouseOutHandler = () => {
-            this.appState.mouse.x = null;
-            this.appState.mouse.y = null;
-        };
+  // ============ render ============
+  render({ w, aqi, name, country }) {
+    const cur = w.current, day = w.daily
+    const [label, kind] = decode(cur.weather_code)
+    const localHour = new Date(cur.time).getHours()
+    const phase = phaseFromHour(localHour)
 
+    console.log("ATMOS render: start", { kind, phase, localHour })
 
-        this.visibilityHandler = () => {
-            if (document.visibilityState === "visible") {
-                // 1. Resume Animation
-                if (!this.animationFrame) {
-                    this.animate();
-                }
-                // 2. Refresh Data if needed
-                this.checkAndRefreshData();
-            } else {
-                // 3. Pause Animation to save battery/CPU
-                cancelAnimationFrame(this.animationFrame);
-                this.animationFrame = null;
-            }
-        };
+    try { this.applyPalette(phase, kind); console.log("ATMOS render: applyPalette OK") }
+    catch(e) { console.error("ATMOS render: applyPalette THREW", e); throw e }
 
-        // --- LISTENERS ---
-        document.addEventListener('click', this.clickOutsideHandler);
-        window.addEventListener('resize', this.resizeHandler);
-        window.addEventListener('mousemove', this.mouseMoveHandler);
-        window.addEventListener('touchmove', this.touchMoveHandler);
-        window.addEventListener('mouseout', this.mouseOutHandler);
+    try { this.setWeatherFx(kind); console.log("ATMOS render: setWeatherFx OK") }
+    catch(e) { console.error("ATMOS render: setWeatherFx THREW", e); throw e }
 
+    const sunrise = (day.sunrise[0] || "").slice(11, 16)
+    const sunset  = (day.sunset[0]  || "").slice(11, 16)
 
-        document.addEventListener("visibilitychange", this.visibilityHandler);
+    try {
+      this.heroTarget.innerHTML = `
+        <div class="hero-loc">${name}${country ? `, ${country}` : ""}</div>
+        <div class="hero-region">${label}</div>
+        <div class="hero-temp">${this.t(cur.temperature_2m)}<span class="deg">°</span></div>
+        <div class="hero-cond">${label}</div>
+        <div class="hero-hilo">H:${this.t(day.temperature_2m_max[0])}°&nbsp;&nbsp;L:${this.t(day.temperature_2m_min[0])}°</div>
+        ${["rain", "drizzle", "thunder"].includes(kind)
+          ? `<div class="alert"><span class="dot"></span><span>Rain expected today</span><span class="arrow">›</span></div>` : ""}`
+      console.log("ATMOS render: hero OK")
+    } catch(e) { console.error("ATMOS render: hero THREW", e); throw e }
 
-        // 2. REFRESH TIMER (Every 15 minutes while app is open)
-        this.refreshTimer = setInterval(() => {
-            this.checkAndRefreshData();
-        }, 900000);
+    try { this.renderHourly(w); console.log("ATMOS render: renderHourly OK") }
+    catch(e) { console.error("ATMOS render: renderHourly THREW", e); throw e }
+
+    try { this.renderDaily(w); console.log("ATMOS render: renderDaily OK") }
+    catch(e) { console.error("ATMOS render: renderDaily THREW", e); throw e }
+
+    try { this.renderCards({ cur, day, aqi, sunrise, sunset, localHour }); console.log("ATMOS render: renderCards OK") }
+    catch(e) { console.error("ATMOS render: renderCards THREW", e); throw e }
+
+    try {
+      this.heroTarget.parentElement.querySelectorAll(".hero,.hourly,.daily,.cards")
+        .forEach(el => el.style.opacity = 1)
+      console.log("ATMOS render: opacity reveal OK")
+    } catch(e) { console.error("ATMOS render: opacity reveal THREW", e); throw e }
+  }
+
+  renderHourly(w) {
+    const h = w.hourly
+    const startIdx = Math.max(0, h.time.findIndex(t => new Date(t) >= new Date(w.current.time)))
+    let cols = ""
+    for (let i = 0; i < 12; i++) {
+      const idx = startIdx + i
+      if (idx >= h.time.length) break
+      const hr = new Date(h.time[idx]).getHours()
+      const [, kind] = decode(h.weather_code[idx])
+      const pop = h.precipitation_probability ? h.precipitation_probability[idx] : 0
+      cols += `
+        <div class="h-col ${i === 0 ? "now" : ""}">
+          <div class="h-time">${i === 0 ? "Now" : String(hr).padStart(2, "0")}</div>
+          <div class="h-icon">${wxIcon(kind, 26)}</div>
+          <div class="h-temp">${this.t(h.temperature_2m[idx])}°</div>
+          ${pop > 30 ? `<div class="h-precip">${pop}%</div>` : ""}
+        </div>`
+    }
+    this.hourlyTarget.innerHTML = `
+      <div class="hourly">
+        <div class="hourly-hd">HOURLY FORECAST</div>
+        <div class="hourly-scroll">${cols}</div>
+      </div>`
+  }
+
+  renderDaily(w) {
+    const d = w.daily
+    const his = d.temperature_2m_max, los = d.temperature_2m_min
+    const gMax = Math.max(...his) + 1, gMin = Math.min(...los) - 1, span = gMax - gMin || 1
+    const rows = d.time.map((t, i) => {
+      const [, kind] = decode(d.weather_code[i])
+      const loPct = ((los[i] - gMin) / span) * 100
+      const hiPct = ((his[i] - gMin) / span) * 100
+      const dow = i === 0 ? "Today" : new Date(t).toLocaleDateString("en", { weekday: "short" })
+      return `
+        <div class="d-row ${i === 0 ? "today" : ""}">
+          <div class="d-dow">${dow}</div>
+          <div class="d-icon">${wxIcon(kind, 24)}</div>
+          <div class="d-lo">${this.t(los[i])}°</div>
+          <div class="d-range"><div class="d-range-fill" style="left:${loPct}%;width:${hiPct - loPct}%"></div></div>
+          <div class="d-hi">${this.t(his[i])}°</div>
+        </div>`
+    }).join("")
+    this.dailyTarget.innerHTML = `<div class="daily"><div class="daily-hd">7-DAY FORECAST</div>${rows}</div>`
+  }
+
+  cardHeader(icon, title) {
+    return `<div class="card-hd">${icon}<span>${title}</span></div>`
+  }
+
+  renderCards({ cur, day, aqi, sunrise, sunset, localHour }) {
+    const C = []
+
+    // UV
+    const uv = Math.round(day.uv_index_max[0] ?? cur.uv_index ?? 0)
+    const uvLabel = uv < 3 ? "Low" : uv < 6 ? "Moderate" : uv < 8 ? "High" : uv < 11 ? "Very High" : "Extreme"
+    C.push(`<div class="card">
+      ${this.cardHeader(`<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="4"/><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="12" y1="3" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="21"/><line x1="3" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="21" y2="12"/></g></svg>`, "UV Index")}
+      <div class="card-val">${uv}<span class="unit">${uvLabel}</span></div>
+      <div class="uv-bar"><div class="uv-thumb" style="left:${Math.min(uv / 11, 1) * 100}%"></div></div>
+      <div class="card-sub">${uv < 3 ? "Low for the rest of the day." : "Use sun protection."}</div></div>`)
+
+    // Sunset arc
+    const toHr = s => { const [h, m] = s.split(":").map(Number); return h + m / 60 }
+    const sr = toHr(sunrise || "06:00"), ss = toHr(sunset || "18:00")
+    const sp = Math.max(0.001, ss - sr)
+    const pct = Math.max(0, Math.min(1, (localHour - sr) / sp))
+    const ang = Math.PI * (1 - pct), cx = 100, cy = 66, r = 66
+    const sx = cx + r * Math.cos(ang), sy = cy - r * Math.sin(ang)
+    C.push(`<div class="card">
+      ${this.cardHeader(`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 18h18M6 18a6 6 0 0 1 12 0M12 3v3M5 8l2 2M19 8l-2 2"/></svg>`, "Sunset")}
+      <div class="card-val" style="font-size:26px">${sunset}</div>
+      <svg class="sun-arc" viewBox="0 0 200 84">
+        <path d="M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="1" stroke-dasharray="2 3"/>
+        <path d="M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${sx} ${sy}" fill="none" stroke="#ffd78a" stroke-width="2"/>
+        <circle cx="${sx}" cy="${sy}" r="5" fill="#ffe8a8"/>
+        <line x1="20" y1="${cy}" x2="180" y2="${cy}" stroke="rgba(255,255,255,0.2)" stroke-width="1"/></svg>
+      <div class="card-sub" style="margin-top:2px">Sunrise: ${sunrise}</div></div>`)
+
+    // Wind compass
+    const ws = this.wind(cur.wind_speed_10m), wd = cur.wind_direction_10m
+    const dirs = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
+    const wcx = 45, wcy = 45, wr = 36, rad = (wd - 90) * Math.PI / 180
+    const ax = wcx + (wr - 12) * Math.cos(rad), ay = wcy + (wr - 12) * Math.sin(rad)
+    const ticks = dirs.map((dd, i) => {
+      const aa = (i * 45 - 90) * Math.PI / 180
+      const tx = wcx + (wr + 4) * Math.cos(aa), ty = wcy + (wr + 4) * Math.sin(aa) + 3
+      return `<text x="${tx}" y="${ty}" text-anchor="middle" font-size="7" fill="${dd === "N" ? "#fff" : "rgba(255,255,255,0.5)"}" font-weight="${dd === "N" ? 700 : 400}">${dd}</text>`
+    }).join("")
+    C.push(`<div class="card">
+      ${this.cardHeader(`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 8h14a2.5 2.5 0 1 0 0-5M3 12h18M3 16h10a2.5 2.5 0 1 1 0 5"/></svg>`, "Wind")}
+      <div style="display:flex;align-items:center;gap:8px">
+        <svg viewBox="0 0 90 90" style="width:80px;height:80px;flex:0 0 80px">
+          <circle cx="${wcx}" cy="${wcy}" r="${wr}" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+          <circle cx="${wcx}" cy="${wcy}" r="${wr - 8}" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="1" stroke-dasharray="2 3"/>
+          ${ticks}
+          <line x1="${wcx}" y1="${wcy}" x2="${ax}" y2="${ay}" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+          <circle cx="${wcx}" cy="${wcy}" r="2" fill="#fff"/></svg>
+        <div>
+          <div style="font-size:22px;font-weight:300">${ws}<span style="font-size:12px;opacity:.7;margin-left:3px">${this.windUnit}</span></div>
+          <div style="font-size:11px;color:var(--fg-55);margin-top:10px">Gusts</div>
+          <div style="font-size:13px">${this.wind(cur.wind_gusts_10m)}<span style="font-size:10px;opacity:.7;margin-left:2px">${this.windUnit}</span></div>
+        </div></div></div>`)
+
+    // Feels like
+    const feels = this.t(cur.apparent_temperature), temp = this.t(cur.temperature_2m)
+    const diff = feels - temp
+    const fnote = diff === 0 ? "Similar to the actual temperature." : diff < 0 ? `Wind makes it feel ${Math.abs(diff)}° cooler.` : `Humidity makes it feel ${diff}° warmer.`
+    C.push(`<div class="card">
+      ${this.cardHeader(`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 3v11a3 3 0 1 0 4 0V3a2 2 0 0 0-4 0z"/><circle cx="12" cy="17" r="2" fill="currentColor"/></svg>`, "Feels Like")}
+      <div class="mini-big">${feels}°</div><div class="card-sub">${fnote}</div></div>`)
+
+    // Humidity
+    C.push(`<div class="card">
+      ${this.cardHeader(`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3c4 5 6 8 6 11a6 6 0 1 1-12 0c0-3 2-6 6-11z"/></svg>`, "Humidity")}
+      <div class="mini-big">${cur.relative_humidity_2m}%</div>
+      <div class="card-sub">The dew point is ${this.t(cur.dew_point_2m)}° right now.</div></div>`)
+
+    // Visibility
+    const vis = (cur.visibility / 1000).toFixed(1)
+    const vnote = vis > 10 ? "Perfectly clear view." : vis > 5 ? "Slight haze in the distance." : "Reduced by fog or precipitation."
+    C.push(`<div class="card">
+      ${this.cardHeader(`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>`, "Visibility")}
+      <div class="mini-big">${vis} <span style="font-size:18px;opacity:.7">km</span></div>
+      <div class="card-sub">${vnote}</div></div>`)
+
+    // Pressure gauge
+    const pv = Math.round(cur.pressure_msl)
+    const ppct = Math.max(0, Math.min(1, (pv - 980) / 60))
+    const pang = -90 + ppct * 180
+    C.push(`<div class="card">
+      ${this.cardHeader(`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 12l4-4"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg>`, "Pressure")}
+      <div style="display:flex;align-items:center;gap:10px">
+        <svg viewBox="0 0 100 60" style="width:90px">
+          <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2" stroke-linecap="round"/>
+          <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="${125.6 * ppct} 300"/>
+          <g transform="translate(50 50) rotate(${pang})"><line x1="0" y1="0" x2="0" y2="-34" stroke="#fff" stroke-width="2" stroke-linecap="round"/></g>
+          <circle cx="50" cy="50" r="2" fill="#fff"/></svg>
+        <div><div style="font-size:22px;font-weight:300">${pv}<span style="font-size:12px;opacity:.7;margin-left:3px">hPa</span></div></div>
+      </div></div>`)
+
+    // AQI
+    if (aqi != null) {
+      const cat = aqi < 50 ? "Good" : aqi < 100 ? "Moderate" : aqi < 150 ? "Unhealthy (SG)" : aqi < 200 ? "Unhealthy" : "Hazardous"
+      const anote = aqi < 50 ? "Air quality is ideal for outdoor activity." : aqi < 100 ? "Acceptable for most people." : "Sensitive groups should reduce exertion."
+      C.push(`<div class="card">
+        ${this.cardHeader(`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 8c2-2 6-2 8 0s6 2 8 0M4 14c2-2 6-2 8 0s6 2 8 0"/></svg>`, "Air Quality")}
+        <div class="card-val">${aqi} <span class="unit">${cat}</span></div>
+        <div class="aqi-scale"><div class="aqi-thumb" style="left:${Math.min(aqi / 300, 1) * 100}%"></div></div>
+        <div class="card-sub" style="margin-top:8px">${anote}</div></div>`)
     }
 
-    disconnect() {
-        // Remove UI Listeners
-        document.removeEventListener('click', this.clickOutsideHandler);
-        window.removeEventListener('resize', this.resizeHandler);
-        window.removeEventListener('mousemove', this.mouseMoveHandler);
-        window.removeEventListener('touchmove', this.touchMoveHandler);
-        window.removeEventListener('mouseout', this.mouseOutHandler);
+    // Precipitation today
+    C.push(`<div class="card">
+      ${this.cardHeader(`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3c4 5 6 8 6 11a6 6 0 1 1-12 0c0-3 2-6 6-11z"/></svg>`, "Precipitation")}
+      <div class="card-val">${(day.precipitation_sum[0] ?? 0).toFixed(1)}<span class="unit">mm</span></div>
+      <div class="card-sub" style="margin-top:4px">${day.precipitation_probability_max?.[0] ?? 0}% chance today</div></div>`)
 
-        // Remove Refresh Logic
-        document.removeEventListener("visibilitychange", this.visibilityHandler);
-        if (this.refreshTimer) clearInterval(this.refreshTimer);
+    this.cardsTarget.innerHTML = C.join("")
+  }
 
-        // Stop Animation Loop
-        cancelAnimationFrame(this.animationFrame);
+  // ============ sky + FX (ported from apple-app.jsx) ============
+  applyPalette(phase, kind = "clear") {
+    const p = PALETTES[phase] || PALETTES.day
+    // Grey/darken the time-of-day palette according to how overcast the condition is.
+    const t = OVERCAST[kind] ?? 0
+    const grey = phase === "night" ? "#2a2f3a" : "#5a626e"
+    const top = overcastBlend(p.top, t, grey)
+    const mid = overcastBlend(p.mid, t, grey)
+    const low = overcastBlend(p.low, t, grey)
+    const hz  = overcastBlend(p.hz,  t, grey)
+    this.skyBgTarget.style.background = `linear-gradient(180deg, ${top} 0%, ${mid} 35%, ${low} 70%, ${hz} 100%)`
+    this.skySunTarget.style.background = p.sun
+    this.skySunTarget.style.left = p.pos.left
+    this.skySunTarget.style.top = p.pos.top
+    this.skySunTarget.style.transform = "translate(-50%,-50%)"
+    this.skyStarsTarget.classList.toggle("on", p.stars && t < 0.4)
+  }
 
-        this.abortController.abort();
+  initStars() {
+    const el = this.skyStarsTarget
+    if (el.children.length) return
+    for (let i = 0; i < 80; i++) {
+      const s = document.createElement("span")
+      s.className = "star"
+      s.style.left = Math.random() * 100 + "%"
+      s.style.top = Math.random() * 70 + "%"
+      const sz = Math.random() * 2 + 0.5
+      s.style.width = sz + "px"; s.style.height = sz + "px"
+      s.style.opacity = 0.4 + Math.random() * 0.6
+      s.style.animation = `twinkle ${2 + Math.random() * 3}s ease-in-out ${Math.random() * 3}s infinite alternate`
+      el.appendChild(s)
+    }
+  }
+
+  setWeatherFx(kind) {
+    const rain = this.rainOverlayTarget, snow = this.snowOverlayTarget, cloud = this.cloudOverlayTarget
+    const fog = this.fogOverlayTarget, thunder = this.thunderOverlayTarget, hail = this.hailOverlayTarget
+    ;[rain, snow, cloud, fog, hail].forEach(el => el.classList.remove("on", "overcast", "light"))
+    thunder.classList.remove("on", "flash-bright", "flash-dim")
+    if (this._thunderInterval) { clearInterval(this._thunderInterval); this._thunderInterval = null }
+
+    // Hide the sun for overcast/precipitating skies, dim it for partly cloudy.
+    if (this.hasSkySunTarget) {
+      const sun = this.skySunTarget
+      sun.classList.remove("dimmed", "hidden")
+      if (["rain", "drizzle", "thunder", "sleet", "snow", "cloud", "overcast", "fog", "hail"].includes(kind)) {
+        sun.classList.add("hidden")
+      } else if (kind === "partly") {
+        sun.classList.add("dimmed")
+      }
     }
 
-    checkAndRefreshData() {
-        const now = Date.now();
-        // Check if data is older than 15 minutes (900,000 ms) and if we have a city loaded
-        if (this.appState.currentCity && (now - this.appState.lastFetchTime >= 900000)) {
-            console.log("Auto-refreshing weather data...");
-            const c = this.appState.currentCity;
-            this.executeWeatherFetch(c.lat, c.lon, c.name, c.country);
-        }
+    const cloudy = ["cloud", "overcast", "partly", "rain", "drizzle", "thunder", "sleet", "snow", "fog", "hail"].includes(kind)
+    if (cloudy) { cloud.classList.add("on"); if (["cloud", "overcast", "thunder", "fog", "hail"].includes(kind)) cloud.classList.add("overcast") }
+    if (["rain", "drizzle", "thunder", "sleet"].includes(kind)) { rain.classList.add("on"); if (kind === "drizzle") rain.classList.add("light") }
+    if (["snow", "sleet"].includes(kind)) snow.classList.add("on")
+    if (kind === "fog") fog.classList.add("on")
+    if (kind === "thunder" || kind === "hail") this.startThunder(thunder)
+    if (kind === "hail") hail.classList.add("on")
+
+    if (rain.classList.contains("on") && !rain.children.length) {
+      const n = rain.classList.contains("light") ? 28 : 50
+      for (let i = 0; i < n; i++) {
+        const d = document.createElement("span"); d.className = "raindrop"
+        d.style.left = Math.random() * 100 + "%"
+        d.style.height = (12 + Math.random() * 12) + "px"
+        d.style.animationDuration = (0.6 + Math.random() * 0.8) + "s"
+        d.style.animationDelay = (Math.random() * 1.5) + "s"
+        rain.appendChild(d)
+      }
     }
-
-    // --- Geolocation & Smart Search Logic ---
-
-    getUserLocation() {
-        if (navigator.geolocation) {
-            this.showLoading(true);
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const lat = position.coords.latitude;
-                    const lon = position.coords.longitude;
-                    this.appState.userLocation = { lat, lon };
-                    this.fetchWeatherByCoords(lat, lon);
-                },
-                (error) => {
-                    console.log("Geolocation denied, defaulting to Cape Town");
-                    this.fetchWeather('Cape Town');
-                }
-            );
-        } else {
-            this.fetchWeather('Cape Town');
-        }
+    if (snow.classList.contains("on") && !snow.children.length) {
+      for (let i = 0; i < 60; i++) {
+        const f = document.createElement("span"); f.className = "snowflake"
+        const sz = 2 + Math.random() * 4
+        f.style.left = Math.random() * 100 + "%"
+        f.style.width = sz + "px"; f.style.height = sz + "px"
+        f.style.opacity = 0.55 + Math.random() * 0.45
+        f.style.animationDuration = (6 + Math.random() * 8) + "s"
+        f.style.animationDelay = "-" + (Math.random() * 10) + "s"
+        snow.appendChild(f)
+      }
     }
-
-    async handleInput() {
-        clearTimeout(this.searchTimeout);
-
-        this.searchTimeout = setTimeout(async () => {
-            const query = this.cityInputTarget.value;
-
-            if (query.length < 3) {
-                this.searchResultsTarget.classList.remove('active');
-                return;
-            }
-
-            try {
-                const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=5&language=en&format=json`);
-                const data = await res.json();
-
-                if (data.results) {
-                    let sortedResults = data.results;
-                    if (this.appState.userLocation) {
-                        sortedResults = data.results.sort((a, b) => {
-                            const distA = this.calculateDistance(
-                                this.appState.userLocation.lat,
-                                this.appState.userLocation.lon,
-                                a.latitude,
-                                a.longitude
-                            );
-                            const distB = this.calculateDistance(
-                                this.appState.userLocation.lat,
-                                this.appState.userLocation.lon,
-                                b.latitude,
-                                b.longitude
-                            );
-                            return distA - distB;
-                        });
-                    }
-                    this.renderSearchResults(sortedResults);
-                } else {
-                    this.searchResultsTarget.classList.remove('active');
-                }
-            } catch (error) {
-                console.error(error);
-            }
-        }, 300);
+    if (cloudy && !cloud.querySelector(".cloud-blob")) {
+      const blobs = [
+        { w: 520, h: 160, top: "8%",  c: "rgba(220,225,235,0.55)", dur: 90 },
+        { w: 420, h: 130, top: "22%", c: "rgba(200,210,225,0.45)", dur: 130, delay: -40 },
+        { w: 620, h: 180, top: "40%", c: "rgba(190,200,215,0.4)",  dur: 160, delay: -90 },
+        { w: 380, h: 110, top: "58%", c: "rgba(210,220,235,0.35)", dur: 110, delay: -20 },
+        { w: 500, h: 150, top: "74%", c: "rgba(180,190,210,0.32)", dur: 200, delay: -130 },
+      ]
+      blobs.forEach(b => {
+        const el = document.createElement("span"); el.className = "cloud-blob"
+        el.style.width = b.w + "px"; el.style.height = b.h + "px"; el.style.top = b.top
+        el.style.background = b.c; el.style.animationDuration = b.dur + "s"
+        if (b.delay) el.style.animationDelay = b.delay + "s"
+        cloud.appendChild(el)
+      })
     }
-
-    calculateDistance(lat1, lon1, lat2, lon2) {
-        const R = 6371; // km
-        const dLat = (lat2 - lat1) * Math.PI / 180;
-        const dLon = (lon2 - lon1) * Math.PI / 180;
-        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return R * c;
+    if (hail.classList.contains("on") && !hail.children.length) {
+      for (let i = 0; i < 40; i++) {
+        const s = document.createElement("span"); s.className = "hailstone"
+        const sz = 3 + Math.random() * 5
+        s.style.left = Math.random() * 100 + "%"
+        s.style.width = sz + "px"; s.style.height = sz + "px"
+        s.style.animationDuration = (0.3 + Math.random() * 0.3) + "s"
+        s.style.animationDelay = (Math.random() * 1.5) + "s"
+        hail.appendChild(s)
+      }
     }
+  }
 
-    renderSearchResults(results) {
-        this.selectedIndex = -1;
-
-        this.searchResultsTarget.innerHTML = '';
-        results.forEach(city => {
-            const div = document.createElement('div');
-            div.className = 'search-result-item';
-
-            const admin = city.admin1 || city.admin2 || '';
-            const country = city.country || '';
-            const locationStr = [admin, country].filter(Boolean).join(', ');
-
-            div.innerHTML = `
-                <strong>${city.name}</strong>
-                <small>${locationStr}</small>
-            `;
-
-            div.onclick = () => {
-                this.cityInputTarget.value = city.name;
-                this.searchResultsTarget.classList.remove('active');
-                this.executeWeatherFetch(city.latitude, city.longitude, city.name, city.country);
-            };
-            this.searchResultsTarget.appendChild(div);
-        });
-        this.searchResultsTarget.classList.add('active');
+  startThunder(el) {
+    el.classList.add("on")
+    const wrap = el.querySelector(".bolt-wrap")
+    if (!wrap.children.length) {
+      const bolt = document.createElement("div"); bolt.className = "bolt"
+      bolt.innerHTML = `<svg viewBox="0 0 80 200" xmlns="http://www.w3.org/2000/svg"><path d="M44 0L12 88h28L24 200l52-112H52L72 0z"/></svg>`
+      wrap.appendChild(bolt)
     }
-
-    async fetchWeatherByCoords(lat, lon) {
-        try {
-            const revRes = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`);
-            const revData = await revRes.json();
-            const city = revData.city || revData.locality || "My Location";
-            const country = revData.countryName || revData.countryCode || "";
-            this.executeWeatherFetch(lat, lon, city, country);
-        } catch (e) {
-            console.error("Reverse geocoding failed", e);
-            this.executeWeatherFetch(lat, lon, "My Location", "");
-        }
+    const flash = () => {
+      const bolt = wrap.querySelector(".bolt")
+      if (!bolt) return
+      bolt.style.left = (15 + Math.random() * 70) + "%"
+      el.classList.add("flash-bright"); bolt.classList.add("on")
+      setTimeout(() => {
+        el.classList.remove("flash-bright"); el.classList.add("flash-dim")
+        bolt.classList.remove("on")
+        setTimeout(() => el.classList.remove("flash-dim"), 200)
+      }, 80)
     }
-
-    search(event) {
-        event.preventDefault();
-        if (this.cityInputTarget.value) {
-            this.fetchWeather(this.cityInputTarget.value);
-            this.searchResultsTarget.classList.remove('active');
-        }
-    }
-
-    async fetchWeather(city) {
-        this.showLoading(true);
-        this.hideError();
-        this.detailsWrapperTarget.classList.remove('open');
-        this.caretIconTarget.classList.replace('ph-caret-up', 'ph-caret-down');
-
-        try {
-            const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=5&language=en&format=json`);
-            const geoData = await geoRes.json();
-
-            if (!geoData.results?.length) throw new Error("City not found.");
-
-            let bestMatch = geoData.results[0];
-            if (this.appState.userLocation) {
-                geoData.results.sort((a, b) => {
-                    const distA = this.calculateDistance(this.appState.userLocation.lat, this.appState.userLocation.lon, a.latitude, a.longitude);
-                    const distB = this.calculateDistance(this.appState.userLocation.lat, this.appState.userLocation.lon, b.latitude, b.longitude);
-                    return distA - distB;
-                });
-                bestMatch = geoData.results[0];
-            }
-
-            const { latitude, longitude, name, country } = bestMatch;
-            this.executeWeatherFetch(latitude, longitude, name, country);
-        } catch (error) {
-            this.showError(error.message);
-            this.showLoading(false);
-        }
-    }
-
-    async executeWeatherFetch(latitude, longitude, name, country) {
-        // Save state so auto-refresh knows what to fetch later
-        this.appState.lastFetchTime = Date.now();
-        this.appState.currentCity = { lat: latitude, lon: longitude, name: name, country: country };
-
-        this.showLoading(true);
-        this.hideError();
-
-        try {
-            const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,rain,showers,snowfall,weather_code,cloud_cover,pressure_msl,surface_pressure,wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,dew_point_2m,uv_index&hourly=temperature_2m,weather_code,is_day&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,uv_index_max,precipitation_sum,precipitation_probability_max,wind_speed_10m_max&timezone=auto&forecast_days=8`;
-            const aqiUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${latitude}&longitude=${longitude}&current=us_aqi`;
-
-            const [weatherRes, aqiRes] = await Promise.all([fetch(weatherUrl), fetch(aqiUrl)]);
-
-            if (!weatherRes.ok) throw new Error("Weather service unavailable.");
-
-            const weatherData = await weatherRes.json();
-            const aqiData = await aqiRes.json();
-
-            // Pass Lat/Lon for distance calculation
-            this.processAllData(name, country, weatherData, aqiData, weatherData.utc_offset_seconds, latitude, longitude);
-        } catch (error) {
-            this.showError(error.message);
-        } finally {
-            this.showLoading(false);
-        }
-    }
-
-    handleKeydown(event) {
-        const items = this.searchResultsTarget.querySelectorAll('.search-result-item');
-        if (!items.length) return;
-
-        if (event.key === 'ArrowDown') {
-            event.preventDefault(); // Stop cursor moving in input
-            this.selectedIndex++;
-            if (this.selectedIndex >= items.length) this.selectedIndex = 0; // Loop to top
-            this.updateSelection(items);
-        }
-        else if (event.key === 'ArrowUp') {
-            event.preventDefault();
-            this.selectedIndex--;
-            if (this.selectedIndex < 0) this.selectedIndex = items.length - 1; // Loop to bottom
-            this.updateSelection(items);
-        }
-        else if (event.key === 'Enter') {
-            if (this.selectedIndex > -1) {
-                event.preventDefault(); // Stop form submit
-                items[this.selectedIndex].click(); // Simulate click on selected item
-            }
-        }
-        else if (event.key === 'Escape') {
-            this.searchResultsTarget.classList.remove('active');
-            this.cityInputTarget.blur();
-        }
-    }
-
-    updateSelection(items) {
-        items.forEach((item, index) => {
-            if (index === this.selectedIndex) {
-                item.classList.add('selected');
-                // Ensure the item is visible if the list is scrolling
-                item.scrollIntoView({ block: 'nearest' });
-            } else {
-                item.classList.remove('selected');
-            }
-        });
-    }
-
-    // --- UI & Rendering Logic ---
-
-    processAllData(city, country, wData, aData, utcOffsetSeconds, targetLat, targetLon) {
-        const current = wData.current;
-        const daily = wData.daily;
-        const hourly = wData.hourly;
-        const aqi = aData.current ? aData.current.us_aqi : null;
-
-        const nowUTC = new Date().getTime() + (new Date().getTimezoneOffset() * 60000);
-        const cityTime = new Date(nowUTC + (utcOffsetSeconds * 1000));
-        const currentHour = cityTime.getHours();
-
-        let isMyLocation = false;
-        if (this.appState.userLocation) {
-            const dist = this.calculateDistance(
-                this.appState.userLocation.lat,
-                this.appState.userLocation.lon,
-                targetLat,
-                targetLon
-            );
-            if (dist < 20) isMyLocation = true;
-        }
-
-        const userBrowserOffsetSeconds = new Date().getTimezoneOffset() * -60;
-        const isSameTimeZone = userBrowserOffsetSeconds === utcOffsetSeconds;
-        const showNowLabel = isMyLocation || isSameTimeZone;
-
-        this.cityNameTarget.textContent = city;
-        this.countryCodeTarget.textContent = country;
-
-        this.updateDateDisplay(cityTime);
-
-        this.tempValueTarget.textContent = Math.round(current.temperature_2m);
-        const { desc, type } = this.getWeatherInfo(current.weather_code);
-        this.weatherDescTarget.textContent = desc;
-        this.appState.weather = type;
-
-        this.windSpeedTarget.textContent = Math.round(current.wind_speed_10m);
-        this.humidityTarget.textContent = current.relative_humidity_2m;
-        this.renderAqiSummary(aqi);
-
-        this.renderHourly(hourly, currentHour, showNowLabel);
-
-        this.render7DayForecast(daily);
-
-        this.realFeelTarget.textContent = Math.round(current.apparent_temperature);
-        this.aqiValueTarget.textContent = aqi !== null ? aqi : "--";
-        this.uvIndexTarget.textContent = current.uv_index !== undefined ? current.uv_index : "Low";
-        this.windGustsTarget.textContent = Math.round(current.wind_gusts_10m);
-        this.windDirTarget.textContent = this.getCompassDirection(current.wind_direction_10m);
-        this.dewPointTarget.textContent = Math.round(current.dew_point_2m);
-        this.pressureTarget.textContent = Math.round(current.surface_pressure);
-        if (this.hasCloudCoverTarget) this.cloudCoverTarget.textContent = current.cloud_cover;
-        this.visibilityTarget.textContent = (current.visibility / 1000).toFixed(1);
-
-        this.dayHighTarget.textContent = Math.round(daily.temperature_2m_max[0]);
-        this.nightLowTarget.textContent = Math.round(daily.temperature_2m_min[0]);
-        this.precipProbTarget.textContent = daily.precipitation_probability_max[0];
-        this.precipSumTarget.textContent = daily.precipitation_sum[0];
-
-        this.handleTheme(cityTime, daily, current.weather_code);
-
-        // --- Scroll the main card to top ---
-        const glassPanel = this.element.querySelector('.glass-panel');
-        if (glassPanel) glassPanel.scrollTop = 0;
-
-        this.resultTarget.style.display = 'flex';
-        this.resultTarget.style.flexDirection = 'column';
-    }
-
-    updateDateDisplay(dateObj) {
-        this.dateDisplayTarget.textContent = dateObj.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' });
-    }
-
-    renderHourly(hourly, currentHour, showNowLabel) {
-        // RESET SCROLL: Snap back to the start ("Now")
-        this.hourlyContainerTarget.scrollLeft = 0;
-
-        this.hourlyContainerTarget.innerHTML = "";
-
-        for (let i = 0; i < 24; i++) {
-            const dataIndex = currentHour + i;
-            if (dataIndex >= hourly.time.length) break;
-
-            const code = hourly.weather_code[dataIndex];
-            const temp = Math.round(hourly.temperature_2m[dataIndex]);
-            const isDay = hourly.is_day[dataIndex];
-
-            const displayHourNum = (currentHour + i) % 24;
-            const iconClass = this.getIconClass(code, isDay === 1);
-
-            let displayTime = `${displayHourNum}:00`;
-
-            if (i === 0 && showNowLabel) {
-                displayTime = "Now";
-            }
-
-            const div = document.createElement('div');
-            div.className = 'hour-item';
-            if (i === 0) div.classList.add('now');
-
-            div.innerHTML = `
-                <span class="hour-time">${displayTime}</span>
-                <i class="hour-icon ${iconClass}"></i>
-                <span class="hour-temp">${temp}°</span>
-            `;
-            this.hourlyContainerTarget.appendChild(div);
-        }
-    }
-
-    render7DayForecast(daily) {
-        // RESET SCROLL: Snap back to the top (Today/Tomorrow)
-        this.dailyContainerTarget.scrollTop = 0;
-
-        this.dailyContainerTarget.innerHTML = '';
-
-        for (let i = 1; i < daily.time.length; i++) {
-            const dateStr = daily.time[i];
-            const max = Math.round(daily.temperature_2m_max[i]);
-            const min = Math.round(daily.temperature_2m_min[i]);
-            const code = daily.weather_code[i];
-
-            const dateObj = new Date(dateStr);
-            const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
-            const dateNum = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            const iconClass = this.getIconClass(code, true);
-
-            const div = document.createElement('div');
-            div.className = 'daily-row';
-            div.innerHTML = `
-                <div class="daily-date">
-                    <span class="day-name">${dayName}</span>
-                    <span class="day-num">${dateNum}</span>
-                </div>
-                <div class="daily-icon">
-                    <i class="${iconClass}"></i>
-                </div>
-                <div class="daily-temps">
-                    <span class="temp-low">${min}°</span>
-                    <span class="temp-high">${max}°</span>
-                </div>
-            `;
-            this.dailyContainerTarget.appendChild(div);
-        }
-    }
-
-    initCanvas() {
-        this.ctx = this.canvasTarget.getContext('2d');
-        this.resizeCanvas();
-        for (let i = 0; i < CONFIG.particleCount; i++) {
-            this.appState.particles.push(new Mushi(this.canvasTarget.width, this.canvasTarget.height, this.appState.theme, this.appState.weather));
-        }
-    }
-
-resizeCanvas() {
-
-        const width = window.innerWidth || document.documentElement.clientWidth;
-        const height = window.innerHeight || document.documentElement.clientHeight;
-        const dpr = window.devicePixelRatio || 1;
-
-        this.canvasTarget.width = width * dpr;
-        this.canvasTarget.height = height * dpr;
-        this.ctx.scale(dpr, dpr);
-
-        this.canvasTarget.style.width = width + 'px';
-        this.canvasTarget.style.height = height + 'px';
-
-        this.appState.particles.forEach(p => {
-            p.canvasWidth = width;
-            p.canvasHeight = height;
-        });
-    }
-
-    animate() {
-        // Standard clear and draw
-        this.ctx.clearRect(0, 0, this.canvasTarget.width, this.canvasTarget.height);
-
-        this.appState.particles.forEach(p => {
-            p.update(this.appState.mouse.x, this.appState.mouse.y, this.appState.weather, this.appState.theme);
-            p.draw(this.ctx);
-        });
-
-        // Only request next frame if we are actually visible (double check)
-        if (document.visibilityState === "visible") {
-            this.animationFrame = requestAnimationFrame(this.animate);
-        }
-    }
-
-    handleTheme(cityTime, daily, weatherCode) {
-        const sunriseTime = new Date(daily.sunrise[0]);
-        const sunsetTime = new Date(daily.sunset[0]);
-        const transitionWindow = 45 * 60 * 1000;
-        const distToSunrise = cityTime - sunriseTime;
-        const distToSunset = cityTime - sunsetTime;
-
-        let theme = 'night';
-        let label = 'Night';
-
-        if (Math.abs(distToSunrise) <= transitionWindow) {
-            theme = 'morning'; label = 'Dawn';
-        }
-        else if (Math.abs(distToSunset) <= transitionWindow) {
-            theme = 'dusk'; label = 'Dusk';
-        }
-        else if (cityTime > sunriseTime && cityTime < sunsetTime) {
-            theme = 'day'; label = 'Day';
-        }
-        else {
-            const currentHour = cityTime.getHours();
-            if (currentHour >= 0 && cityTime < sunriseTime) {
-                theme = 'morning'; label = 'Morning';
-            } else {
-                theme = 'night'; label = 'Night';
-            }
-        }
-
-        document.body.className = `theme-${theme}`;
-        if (theme === 'day' && (weatherCode === 0 || weatherCode === 1)) {
-            document.body.classList.add('weather-clear');
-        }
-        this.appState.theme = theme === 'dusk' ? 'morning' : theme;
-        this.timeBadgeTarget.textContent = label;
-    }
-
-    renderAqiSummary(aqi) {
-        if (aqi !== null) {
-            let aqiClass = 'aqi-good';
-            let aqiText = 'Good';
-            if (aqi > 50) { aqiClass = 'aqi-fair'; aqiText = 'Moderate'; }
-            if (aqi > 100) { aqiClass = 'aqi-poor'; aqiText = 'Unhealthy'; }
-            this.aqiSummaryTarget.innerHTML = `<span class="aqi-badge ${aqiClass}">${aqiText}</span>`;
-        } else {
-            this.aqiSummaryTarget.textContent = "N/A";
-        }
-    }
-
-    getCompassDirection(degrees) {
-        const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
-        const index = Math.round(degrees / 45) % 8;
-        return directions[index];
-    }
-
-    getWeatherInfo(code) {
-        if (code === 0) return { desc: "Clear Sky", type: 'clear' };
-        if (code <= 3) return { desc: "Partly Cloudy", type: 'clear' };
-        if (code <= 48) return { desc: "Fog", type: 'snow' };
-        if (code <= 67) return { desc: "Rain", type: 'snow' };
-        if (code <= 77) return { desc: "Snow", type: 'snow' };
-        if (code <= 82) return { desc: "Heavy Rain", type: 'snow' };
-        return { desc: "Thunderstorm", type: 'snow' };
-    }
-
-    getIconClass(code, isDay) {
-        if (code === 0) return isDay ? 'ph ph-sun' : 'ph ph-moon';
-        if (code <= 3) return isDay ? 'ph ph-cloud-sun' : 'ph ph-cloud-moon';
-        if (code <= 48) return 'ph ph-cloud-fog';
-        if (code <= 67) return 'ph ph-cloud-rain';
-        if (code <= 77) return 'ph ph-snowflake';
-        if (code > 90) return 'ph ph-cloud-lightning';
-        return 'ph ph-cloud';
-    }
-
-    showLoading(isLoading) {
-        this.spinnerTarget.style.display = isLoading ? 'inline-block' : 'none';
-
-        if (isLoading) {
-            // --- GOING TO LOADING STATE ---
-            this.detailsWrapperTarget.classList.remove('open');
-            this.caretIconTarget.classList.replace('ph-caret-up', 'ph-caret-down');
-
-            // Reset animation state
-            this.resultTarget.classList.remove('grand-entrance');
-
-            // 1. Fade out Result
-            this.resultTarget.style.transition = 'opacity 0.3s ease';
-            this.resultTarget.style.opacity = '0';
-
-            setTimeout(() => {
-                // 2. Hide Result completely
-                this.resultTarget.style.display = 'none';
-
-                // 3. Show Skeleton
-                this.skeletonTarget.style.display = 'flex';
-                void this.skeletonTarget.offsetWidth; // Force reflow
-
-                // 4. Fade in Skeleton
-                requestAnimationFrame(() => {
-                    this.skeletonTarget.style.transition = 'opacity 0.3s ease';
-                    this.skeletonTarget.style.opacity = '0.7';
-                });
-            }, 300);
-
-        } else {
-            // --- FINISHING LOADING (Grand Entrance) ---
-
-            // 1. Fade out Skeleton
-            this.skeletonTarget.style.transition = 'opacity 0.3s ease';
-            this.skeletonTarget.style.opacity = '0';
-
-            setTimeout(() => {
-                // Hide Skeleton completely
-                this.skeletonTarget.style.display = 'none';
-
-                // Prepare Result
-                this.resultTarget.style.display = 'flex';
-                this.resultTarget.style.flexDirection = 'column';
-
-                // --- Reset Widget Scrolls Immediately on Display ---
-                this.hourlyContainerTarget.scrollLeft = 0;
-                this.dailyContainerTarget.scrollTop = 0;
-
-                this.resultTarget.style.opacity = '0';
-
-                // TRIGGER THE GRAND ENTRANCE
-                requestAnimationFrame(() => {
-                    this.resultTarget.classList.add('grand-entrance');
-                });
-            }, 300);
-        }
-    }
-
-    showError(msg) {
-        this.errorMsgTarget.textContent = msg;
-        this.errorAlertTarget.style.display = 'block';
-        setTimeout(() => {
-            this.errorAlertTarget.style.display = 'none';
-            this.cityInputTarget.classList.remove('is-invalid');
-        }, 4000);
-    }
-
-    hideError() {
-        this.errorAlertTarget.style.display = 'none';
-    }
-
-    toggleDetails() {
-        this.detailsWrapperTarget.classList.toggle('open');
-        const isOpen = this.detailsWrapperTarget.classList.contains('open');
-        this.caretIconTarget.classList.toggle('ph-caret-up', isOpen);
-        this.caretIconTarget.classList.toggle('ph-caret-down', !isOpen);
-
-        if (isOpen) {
-            setTimeout(() => {
-                this.detailsWrapperTarget.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }, 500);
-        } else {
-            this.resultTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-    }
-
-    // --- PHYSICS: HOURLY (Horizontal X-Axis) ---
-    initHourlyScroll() {
-        // 1. Create the signal option
-        const opts = { signal: this.abortController.signal };
-
-        const slider = this.hourlyContainerTarget;
-        let isDown = false;
-        let startX;
-        let scrollLeft;
-        let velX = 0;
-        let momentumID;
-
-        slider.addEventListener('mousedown', (e) => {
-            isDown = true;
-            slider.classList.add('active');
-            startX = e.pageX - slider.offsetLeft;
-            scrollLeft = slider.scrollLeft;
-            cancelAnimationFrame(momentumID);
-        }, opts);
-
-        slider.addEventListener('mouseleave', () => {
-            isDown = false;
-            slider.classList.remove('active');
-        }, opts);
-
-        slider.addEventListener('mouseup', () => {
-            isDown = false;
-            slider.classList.remove('active');
-            this.beginMomentumX(slider, velX);
-        }, opts);
-
-        slider.addEventListener('mousemove', (e) => {
-            if (!isDown) return;
-            e.preventDefault();
-            const x = e.pageX - slider.offsetLeft;
-            const walk = (x - startX) * 1.5;
-            const prevScrollLeft = slider.scrollLeft;
-            slider.scrollLeft = scrollLeft - walk;
-            velX = slider.scrollLeft - prevScrollLeft;
-        }, opts);
-    }
-
-    beginMomentumX(slider, velocity) {
-        const decay = 0.92;
-        const step = () => {
-            if (Math.abs(velocity) < 0.5) return;
-            velocity *= decay;
-            slider.scrollLeft += velocity;
-            requestAnimationFrame(step);
-        };
-        requestAnimationFrame(step);
-    }
-
-    // --- PHYSICS: DAILY (Vertical Y-Axis) ---
-    initDailyScroll() {
-        const opts = { signal: this.abortController.signal };
-
-        const slider = this.dailyContainerTarget;
-        let isDown = false;
-        let startY;
-        let scrollTop;
-        let velY = 0;
-        let momentumID;
-
-        slider.addEventListener('mousedown', (e) => {
-            isDown = true;
-            slider.classList.add('active');
-            startY = e.pageY - slider.offsetTop;
-            scrollTop = slider.scrollTop;
-            cancelAnimationFrame(momentumID);
-        }, opts);
-
-        slider.addEventListener('mouseleave', () => {
-            isDown = false;
-            slider.classList.remove('active');
-        }, opts);
-
-        slider.addEventListener('mouseup', () => {
-            isDown = false;
-            slider.classList.remove('active');
-            this.beginMomentumY(slider, velY);
-        }, opts);
-
-        slider.addEventListener('mousemove', (e) => {
-            if (!isDown) return;
-            e.preventDefault();
-            const y = e.pageY - slider.offsetTop;
-            const walk = (y - startY) * 1.5;
-            const prevScrollTop = slider.scrollTop;
-            slider.scrollTop = scrollTop - walk;
-            velY = slider.scrollTop - prevScrollTop;
-        }, opts);
-    }
-
-    beginMomentumY(slider, velocity) {
-        const decay = 0.92;
-        const step = () => {
-            if (Math.abs(velocity) < 0.5) return;
-            velocity *= decay;
-            slider.scrollTop += velocity;
-            requestAnimationFrame(step);
-        };
-        requestAnimationFrame(step);
-    }
+    flash()
+    this._thunderInterval = setInterval(flash, 5000)
+  }
+
+  // ============ errors ============
+  showError(msg) {
+    this.errorMsgTarget.textContent = msg
+    this.errorAlertTarget.style.display = "block"
+    clearTimeout(this.errTimeout)
+    this.errTimeout = setTimeout(() => { this.errorAlertTarget.style.display = "none" }, 4000)
+  }
 }
