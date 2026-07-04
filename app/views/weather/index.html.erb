@@ -1,92 +1,52 @@
-<div class="glass-panel">
+<%# Atmos — apple layout. Live data via Open-Meteo (weather_controller.js). %>
 
-    <div class="panel-header">
-        <div class="location-group">
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <h2 class="city-name" data-weather-target="cityName">--</h2>
-                <button class="fav-btn" data-action="click->weather#toggleFavorite">
-                    <i class="ph ph-star" data-weather-target="favIcon"></i>
-                </button>
-            </div>
-            <span class="country-badge" data-weather-target="countryCode">--</span>
-        </div>
+<div class="app" data-controller="weather">
+  <%# Sky layers inside the controller so Stimulus can find the targets %>
+  <div class="sky-bg"      data-weather-target="skyBg"></div>
+  <div class="sky-sun"     data-weather-target="skySun"></div>
+  <div class="sky-stars"   data-weather-target="skyStars"></div>
+  <div class="cloud-overlay"   data-weather-target="cloudOverlay"></div>
+  <div class="rain-overlay"    data-weather-target="rainOverlay"></div>
+  <div class="snow-overlay"    data-weather-target="snowOverlay"></div>
+  <div class="fog-overlay"     data-weather-target="fogOverlay"></div>
+  <div class="thunder-overlay" data-weather-target="thunderOverlay"><div class="bolt-wrap"></div></div>
+  <div class="hail-overlay"    data-weather-target="hailOverlay"></div>
 
-        <div class="search-wrapper">
-            <form data-action="submit->weather#search">
-                <input type="text"
-                       data-weather-target="cityInput"
-                       data-action="input->weather#handleInput keydown->weather#handleKeydown blur->weather#collapseSearch"
-                       class="stealth-input"
-                       placeholder="Search..."
-                       autocomplete="off">
-                <button type="button" class="search-btn" data-action="click->weather#toggleSearch">
-                    <i class="ph ph-magnifying-glass"></i>
-                </button>
-            </form>
-            <div data-weather-target="searchResults" class="search-results"></div>
-        </div>
+  <div class="topbar">
+    <div class="brand"><span class="brand-mark"></span><span>ATMOS</span></div>
+    <div class="units-toggle">
+      <button type="button" class="u-btn active" data-units="metric"
+              data-action="weather#setUnits" data-weather-target="unitMetric">°C</button>
+      <button type="button" class="u-btn" data-units="imperial"
+              data-action="weather#setUnits" data-weather-target="unitImperial">°F</button>
     </div>
+  </div>
 
-    <div class="favorites-drawer" data-weather-target="favoritesList"></div>
+  <%# Search %>
+  <div class="search">
+    <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" stroke-width="1.8">
+      <circle cx="11" cy="11" r="7"></circle>
+      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+    </svg>
+    <input class="search-input" type="text" autocomplete="off"
+           placeholder="Search for a city"
+           data-weather-target="cityInput"
+           data-action="input->weather#handleInput keydown->weather#handleKeydown">
+    <span class="loader" data-weather-target="spinner" style="display:none"></span>
+    <div class="search-results" data-weather-target="searchResults"></div>
+  </div>
 
-    <div class="hero-section" data-weather-target="result">
-        <div class="hero-main">
-            <h1 class="temp-display"><span data-weather-target="tempValue">--</span>°</h1>
-            <div class="weather-status">
-                <div class="lead" data-weather-target="weatherDesc">--</div>
-                <div class="date-badge">
-                    <span data-weather-target="dateDisplay">--</span>
-                    <span class="dot-separator">•</span>
-                    <span data-weather-target="timeBadge">--</span>
-                </div>
-            </div>
-        </div>
+  <%# Error toast %>
+  <div class="atmos-alert" data-weather-target="errorAlert" role="alert" style="display:none">
+    <span data-weather-target="errorMsg">Something went wrong</span>
+  </div>
 
-        <div class="bento-grid">
-            <div class="bento-card mini">
-                <div class="bento-label">Wind</div>
-                <div class="bento-value"><span data-weather-target="windSpeed">--</span> <small>kph</small></div>
-                <i class="ph ph-wind bento-icon"></i>
-            </div>
-            <div class="bento-card mini">
-                <div class="bento-label">Humidity</div>
-                <div class="bento-value"><span data-weather-target="humidity">--</span><small>%</small></div>
-                <i class="ph ph-drop bento-icon"></i>
-            </div>
-            <div class="bento-card mini">
-                <div class="bento-label">RealFeel</div>
-                <div class="bento-value"><span data-weather-target="realFeel">--</span>°</div>
-                <i class="ph ph-thermometer bento-icon"></i>
-            </div>
-            <div class="bento-card mini">
-                <div class="bento-label">UV Index</div>
-                <div class="bento-value" data-weather-target="uvIndex">--</div>
-                <i class="ph ph-sun-dim bento-icon"></i>
-            </div>
-        </div>
+  <%# Everything below is rendered by the controller after a successful fetch %>
+  <div data-weather-target="hero"   class="hero"></div>
+  <div data-weather-target="hourly"></div>
+  <div data-weather-target="daily"></div>
+  <div data-weather-target="cards"  class="cards"></div>
 
-        <div class="hourly-section" style="position: relative; height: 180px; width: 100%;">
-            <canvas data-weather-target="hourlyChart"></canvas>
-        </div>
-
-        <div class="weekly-section">
-            <div class="section-header">7-Day Forecast</div>
-            <div class="daily-forecast-scroll" data-weather-target="dailyContainer"></div>
-        </div>
-
-        <div class="meta-footer">
-            <span>Data: Open-Meteo</span>
-            <span>v2.0</span>
-        </div>
-    </div>
-
-    <div data-weather-target="skeleton" class="v2-skeleton" style="display: none;">
-        <div class="sk-line title"></div>
-        <div class="sk-line big-temp"></div>
-        <div class="sk-grid">
-            <div class="sk-box"></div><div class="sk-box"></div>
-            <div class="sk-box"></div><div class="sk-box"></div>
-        </div>
-    </div>
-
+  <div class="atmos-footer">Powered by Open-Meteo</div>
 </div>
