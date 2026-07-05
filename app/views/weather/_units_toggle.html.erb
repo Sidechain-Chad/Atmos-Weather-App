@@ -1,0 +1,6 @@
+<div class="units-toggle">
+  <button type="button" class="u-btn <%= "active" if units == "metric" %>" data-units="metric"
+          data-action="weather#setUnits" data-weather-target="unitMetric">°C</button>
+  <button type="button" class="u-btn <%= "active" if units == "imperial" %>" data-units="imperial"
+          data-action="weather#setUnits" data-weather-target="unitImperial">°F</button>
+</div>

@@ -33,7 +33,7 @@ body {
   inset: 0;
   z-index: -2;
   background: linear-gradient(180deg, #0a1426 0%, #1a2a4a 35%, #3a5580 70%, #88a5c4 100%);
-  transition: background 1s ease;
+  transition: background 2s ease;
 }
 
 .sky-sun {
@@ -269,9 +269,9 @@ body {
 @media (max-width: 500px) { .topbar { margin-bottom: 18px; } }
 
 .brand-mark {
-  width: 14px; height: 14px;
+  width: 20px; height: 20px;
   border-radius: 50%;
-  background: radial-gradient(circle at 30% 30%, #ffe8b8, #e89a4a);
+  background: url("/icon.png") center / cover;
 }
 
 /* ---- Sound toggle ---- */
@@ -294,6 +294,9 @@ body {
 .sound-toggle:hover {
   background: rgba(255, 255, 255, 0.14);
   color: #ffffff;
+}
+.sound-toggle.muted {
+  color: rgba(255, 255, 255, 0.4);
 }
 .sound-toggle:active {
   transform: scale(0.94);
@@ -445,7 +448,10 @@ body {
   font-size: 13px;
   margin-top: 20px;
   cursor: pointer;
+  color: #ffffff;
+  text-decoration: none;
 }
+.alert:link, .alert:visited, .alert:hover, .alert:active { color: #ffffff; text-decoration: none; }
 .alert:hover { background: rgba(255, 255, 255, 0.14); }
 .alert .dot { width: 6px; height: 6px; background: #ffb467; border-radius: 50%; }
 .alert .arrow { opacity: 0.6; }
@@ -472,7 +478,13 @@ body {
   flex-direction: column;
   position: relative;
   overflow: hidden;
+  color: #ffffff;
+  text-decoration: none;
 }
+/* Cards are <a> tags (metric detail links) — pin color/decoration across every
+   link state so the browser's visited-link color can't leak through into
+   children (.card-val, .mini-big) that don't set their own color. */
+.card:link, .card:visited, .card:hover, .card:active { color: #ffffff; text-decoration: none; }
 .card.wide { grid-column: span 2; }
 @media (max-width: 500px) { .card { padding: 14px; min-height: 140px; border-radius: 16px; } }
 @media (max-width: 380px) { .card { padding: 12px; min-height: 128px; } }
@@ -495,6 +507,7 @@ body {
   font-weight: 300;
   line-height: 1;
   letter-spacing: -0.02em;
+  color: #ffffff;
 }
 .card-val .unit { font-size: 18px; font-weight: 400; opacity: 0.7; margin-left: 2px; }
 @media (max-width: 380px) {
@@ -551,6 +564,11 @@ body {
   -webkit-overflow-scrolling: touch;
 }
 .hourly-scroll::-webkit-scrollbar { display: none; }
+
+/* Mouse grab-to-scroll (drag_scroll_controller.js). Touch/trackpad keep native scrolling. */
+.drag-scroll { cursor: grab; }
+.drag-scroll.grabbing { cursor: grabbing; }
+.drag-scroll, .drag-scroll * { -webkit-user-drag: none; user-select: none; }
 
 .h-col {
   flex: 0 0 56px;
@@ -689,6 +707,7 @@ body {
   font-weight: 300;
   letter-spacing: -0.02em;
   line-height: 1;
+  color: #ffffff;
 }
 @media (max-width: 380px) { .mini-big { font-size: 28px; } }
 
@@ -894,6 +913,7 @@ body {
   background: transparent;
   border: none;
   color: #ffffff;
+  text-decoration: none;
   font-family: inherit;
   font-size: 15px;
   font-weight: 400;
@@ -901,6 +921,7 @@ body {
   padding: 6px 10px 6px 0;
   letter-spacing: -0.01em;
 }
+.detail-back:link, .detail-back:visited, .detail-back:hover, .detail-back:active { color: #ffffff; text-decoration: none; }
 .detail-back:hover { opacity: 0.8; }
 .detail-title {
   font-size: 11px;
@@ -1137,11 +1158,46 @@ body {
 }
 
 /* ---- Rails port additions (units toggle, toast, footer, transitions) ---- */
+turbo-frame { display: contents; }
 .units-toggle { display:flex; gap:4px; background:rgba(255,255,255,0.08); padding:3px; border-radius:10px; }
 .units-toggle .u-btn { border:none; background:transparent; color:var(--fg-55,rgba(255,255,255,0.6)); font:inherit; font-size:13px; padding:4px 10px; border-radius:8px; cursor:pointer; transition:background .2s,color .2s; }
 .units-toggle .u-btn.active { background:rgba(255,255,255,0.9); color:#1a1a2a; font-weight:600; }
 .atmos-alert { margin:10px 0; padding:10px 14px; border-radius:12px; background:rgba(200,40,40,0.85); color:#fff; font-size:13px; text-align:center; backdrop-filter:blur(8px); }
 .atmos-footer { text-align:center; margin:30px 0 12px; font-size:11px; letter-spacing:0.05em; color:var(--fg-40,rgba(255,255,255,0.4)); }
-.loader { width:16px; height:16px; border:2px solid rgba(255,255,255,0.3); border-top-color:#fff; border-radius:50%; animation:atmos-spin .7s linear infinite; }
+.loader {
+  width:16px; height:16px; border:2px solid rgba(255,255,255,0.3); border-top-color:#fff; border-radius:50%; animation:atmos-spin .7s linear infinite;
+  /* Centered via margin, not transform: translateY — the spin keyframes
+     already own `transform`, and animating between translateY and rotate
+     on the same property makes the browser interpolate translate->rotate,
+     which looks like a bounce/swoop instead of a clean spin. */
+  position: absolute; left: 14px; top: 50%; margin-top: -8px;
+}
 @keyframes atmos-spin { to { transform:rotate(360deg); } }
-.app .hero, .app .hourly, .app .daily, .app .cards { opacity:0; transition:opacity .6s ease; }
+.app .hero, .app .hourly, .app .daily, .app .cards, .app .my-locations { opacity:0; transition:opacity .6s ease; }
+
+.save-toggle-form { display: inline-block; margin-top: 20px; }
+.save-toggle {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #fff;
+  font-family: inherit;
+  font-size: 13px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transition: background 0.15s;
+}
+.save-toggle:hover { background: rgba(255, 255, 255, 0.16); }
+.save-toggle.saved { background: rgba(255, 216, 138, 0.22); border-color: rgba(255, 216, 138, 0.4); color: #ffd88a; }
+
+.my-locations { margin-top: 24px; }
+.my-locations-hd {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.55);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 500;
+  margin-bottom: 12px;
+}

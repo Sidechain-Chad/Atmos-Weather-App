@@ -1,0 +1,48 @@
+<%
+  uv = wx_round(weather.daily["uv_index_max"]&.[](0) || weather.current["uv_index"] || 0)
+  uv_times = hourly_window(weather, "time")
+  uv_values = hourly_window(weather, "uv_index")
+  peak = uv_values.compact.max || 0
+  peak_idx = uv_values.index(peak)
+  peak_time = (peak_idx && (t = uv_times[peak_idx])) ? t.to_s[11, 5] : "—"
+%>
+<div class="detail-hero">
+  <div class="detail-hero-val"><%= uv %><span class="level"><%= uv_label(uv) %></span></div>
+  <div class="detail-hero-sub">
+    <%= uv < 3 ? "Low exposure risk today — safe to be outside without protection." : "Wear sunscreen and sunglasses, and seek shade during midday hours." %>
+  </div>
+</div>
+
+<div class="detail-section">
+  <div class="detail-section-hd">TODAY'S UV CURVE</div>
+  <div>
+    <%= bar_chart_svg(uv_values, color: "#f2d84a") %>
+    <div class="axis"><span>Now</span><span>+12h</span><span>+24h</span></div>
+  </div>
+</div>
+
+<div class="detail-section">
+  <div class="detail-section-hd">RISK SCALE</div>
+  <div class="detail-scale" style="background:linear-gradient(90deg, #6ecf6c 0%, #f2d84a 30%, #f59537 55%, #e74c3c 80%, #9b59b6 100%)">
+    <div class="detail-scale-thumb" style="left:<%= [uv / 11.0, 1].min * 100 %>%"></div>
+  </div>
+  <div class="detail-scale-labels"><span>Low</span><span>Mod.</span><span>High</span><span>V. High</span><span>Extreme</span></div>
+</div>
+
+<div class="detail-section">
+  <div class="detail-section-hd">TODAY'S SUMMARY</div>
+  <div class="detail-list">
+    <div class="row"><span class="k">Peak UV</span><span class="v"><%= peak %> at <%= peak_time %></span></div>
+    <div class="row"><span class="k">Category at peak</span><span class="v"><%= uv_label(peak) %></span></div>
+    <div class="row"><span class="k">Minutes to burn (type II skin)</span><span class="v"><%= peak < 3 ? "60+" : peak < 6 ? "30–45" : "15–25" %></span></div>
+    <div class="row"><span class="k">Recommendation</span><span class="v"><%= peak < 3 ? "Minimal protection" : "SPF 30+ recommended" %></span></div>
+  </div>
+</div>
+
+<div class="detail-section">
+  <div class="detail-section-hd">ABOUT UV INDEX</div>
+  <div class="detail-prose">
+    <p>The UV index measures the strength of sunburn-producing ultraviolet radiation reaching the ground. Values of 3 or higher call for protection; 8 or higher calls for extra caution during midday hours.</p>
+    <p>Even on cloudy days, up to 80% of UV radiation can penetrate clouds — always check the index, not the sky.</p>
+  </div>
+</div>

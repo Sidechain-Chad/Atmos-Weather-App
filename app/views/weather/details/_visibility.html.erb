@@ -1,0 +1,31 @@
+<%
+  vis = visibility_value(weather.current["visibility"], units)
+  imperial = units == "imperial"
+  clear_threshold = imperial ? 6 : 10
+  hazy_threshold = imperial ? 3 : 5
+  scale = imperial ? [["Excellent", "> 10 mi"], ["Good", "6 – 10 mi"], ["Moderate", "3 – 6 mi"], ["Poor", "0.6 – 3 mi"], ["Very Poor (Fog)", "< 0.6 mi"]]
+                   : [["Excellent", "> 16 km"], ["Good", "10 – 16 km"], ["Moderate", "5 – 10 km"], ["Poor", "1 – 5 km"], ["Very Poor (Fog)", "< 1 km"]]
+%>
+<div class="detail-hero">
+  <div class="detail-hero-val"><%= vis %><span class="unit-lg"><%= visibility_unit(units) %></span></div>
+  <div class="detail-hero-sub">
+    <%= vis > clear_threshold ? "Perfectly clear view." : vis > hazy_threshold ? "Slight haze in the distance." : "Reduced by fog or precipitation." %>
+  </div>
+</div>
+
+<div class="detail-section">
+  <div class="detail-section-hd">TODAY'S VISIBILITY</div>
+  <div>
+    <%= sparkline_svg(hourly_window(weather, "visibility").map { |v| v ? v / 1000.0 : nil }, color: "#c8d5e6", fill: "rgba(200,213,230,0.14)") %>
+    <div class="axis"><span>Now</span><span>+12h</span><span>+24h</span></div>
+  </div>
+</div>
+
+<div class="detail-section">
+  <div class="detail-section-hd">SCALE</div>
+  <div class="detail-list">
+    <% scale.each do |label, range| %>
+      <div class="row"><span class="k"><%= label %></span><span class="v"><%= range %></span></div>
+    <% end %>
+  </div>
+</div>

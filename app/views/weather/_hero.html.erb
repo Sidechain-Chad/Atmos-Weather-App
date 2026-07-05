@@ -1,0 +1,22 @@
+<div class="hero">
+  <div class="hero-loc"><%= weather.name %><%= ", #{weather.country}" if weather.country.present? %></div>
+  <div class="hero-region"><%= weather.condition.label %></div>
+  <div class="hero-temp"><%= wx_round(weather.current["temperature_2m"]) %><span class="deg">°</span></div>
+  <div class="hero-cond"><%= weather.condition.label %></div>
+  <div class="hero-hilo">H:<%= wx_round(weather.daily["temperature_2m_max"][0]) %>°&nbsp;&nbsp;L:<%= wx_round(weather.daily["temperature_2m_min"][0]) %>°</div>
+  <% if (alert = hero_alert_text(weather)) %>
+    <%= link_to weather_metric_path("precipitation"), class: "alert", data: { turbo: false } do %>
+      <span class="dot"></span><span><%= alert %></span><span class="arrow">›</span>
+    <% end %>
+  <% end %>
+
+  <% if location_saved %>
+    <%= button_to "★ Saved", weather_locations_path, method: :delete,
+          params: { name: weather.name, lat: weather.latitude, lon: weather.longitude },
+          class: "save-toggle saved", form_class: "save-toggle-form" %>
+  <% else %>
+    <%= button_to "☆ Save", weather_locations_path, method: :post,
+          params: { name: weather.name, country: weather.country, lat: weather.latitude, lon: weather.longitude },
+          class: "save-toggle", form_class: "save-toggle-form" %>
+  <% end %>
+</div>

@@ -1,0 +1,22 @@
+<% if locations.present? %>
+  <div class="my-locations">
+    <div class="my-locations-hd">MY LOCATIONS</div>
+    <div class="cities-row-a" data-controller="drag-scroll">
+      <% locations.each do |loc| %>
+        <div class="city-pill <%= "active" if loc.name == current&.name && loc.country.to_s == current&.country.to_s %>"
+             data-action="click->weather#navigateToLocation"
+             data-lat="<%= loc.latitude %>" data-lon="<%= loc.longitude %>"
+             data-name="<%= loc.name %>" data-country="<%= loc.country %>">
+          <div>
+            <div class="name"><%= loc.name %></div>
+            <div class="tz"><%= loc.condition.label %></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:flex-end">
+            <div class="temp"><%= wx_round(loc.current["temperature_2m"]) %>°</div>
+            <%= wx_icon(loc.condition.kind, 24) %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+<% end %>

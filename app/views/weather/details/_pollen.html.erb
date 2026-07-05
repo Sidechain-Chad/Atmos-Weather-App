@@ -1,0 +1,39 @@
+<% pollen = weather.pollen %>
+<% available = pollen && pollen.values.any? { |v| !v.nil? } %>
+<% if available %>
+  <% dominant = pollen.max_by { |_, v| v || 0 } %>
+  <div class="detail-hero">
+    <div class="detail-hero-val"><%= pollen_level(dominant[1]) %></div>
+    <div class="detail-hero-sub">Dominant pollen: <%= dominant[0].to_s.sub("_pollen", "").capitalize %> (<%= dominant[1].round(1) %> grains/m³)</div>
+  </div>
+
+  <% levels = ["Low", "Moderate", "High", "Very High"] %>
+  <% colors = ["#6ecf6c", "#c2d84a", "#f2b84a", "#f29537"] %>
+  <div class="detail-section">
+    <div class="detail-section-hd">BREAKDOWN</div>
+    <% pollen.each do |type, value| %>
+      <% next if value.nil? %>
+      <% lvl = pollen_level(value) %>
+      <% idx = levels.index(lvl) || 0 %>
+      <div style="margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px">
+          <span><%= type.to_s.sub("_pollen", "").capitalize %></span><span style="color:<%= colors[idx] %>"><%= lvl %></span>
+        </div>
+        <div style="display:flex;gap:4px">
+          <% levels.each_index do |i| %>
+            <div style="flex:1;height:6px;border-radius:3px;background:<%= i <= idx ? colors[i] : "rgba(255,255,255,0.12)" %>"></div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="detail-section">
+    <div class="detail-section-hd">ABOUT POLLEN DATA</div>
+    <div class="detail-prose">
+      <p>Pollen counts come from the CAMS European air-quality model, so they're only available for locations in Europe.</p>
+    </div>
+  </div>
+<% else %>
+  <div class="detail-hero"><div class="detail-hero-sub">Pollen data isn't available for this location — it's currently limited to Europe.</div></div>
+<% end %>

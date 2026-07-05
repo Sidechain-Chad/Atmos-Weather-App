@@ -1,0 +1,13 @@
+<div class="search">
+  <svg class="search-icon" data-weather-target="searchIcon" width="16" height="16" viewBox="0 0 24 24" fill="none"
+       stroke="currentColor" stroke-width="1.8">
+    <circle cx="11" cy="11" r="7"></circle>
+    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+  </svg>
+  <input class="search-input" type="text" autocomplete="off"
+         placeholder="Search for a city"
+         data-weather-target="cityInput"
+         data-action="input->weather#handleInput keydown->weather#handleKeydown">
+  <span class="loader" data-weather-target="spinner" style="display:none"></span>
+  <div class="search-results" data-weather-target="searchResults"></div>
+</div>

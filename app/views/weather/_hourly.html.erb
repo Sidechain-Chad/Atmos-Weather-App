@@ -1,0 +1,32 @@
+<div class="hourly">
+  <div class="hourly-hd">
+    HOURLY FORECAST
+    <% if (alert = hourly_alert_text(weather)) %>
+      <span class="sub"><%= alert %></span>
+    <% end %>
+  </div>
+  <div class="hourly-scroll" data-controller="drag-scroll">
+    <%
+      times = weather.hourly["time"]
+      # The hourly array only has entries on the hour, but current.time usually
+      # falls mid-hour — so "Now" is the current hour's slot with its temp/condition
+      # overridden by the live `current` reading, not the next hourly boundary.
+      floor_idx = times.rindex { |t| t <= weather.current["time"] } || 0
+      (0...12).each do |i|
+        idx = floor_idx + i
+        break if idx >= times.length
+        is_now = i.zero?
+        hour = times[idx][11, 2].to_i
+        kind = is_now ? weather.condition.kind : WeatherCode.decode(weather.hourly["weather_code"][idx]).kind
+        temp = is_now ? weather.current["temperature_2m"] : weather.hourly["temperature_2m"][idx]
+        pop = weather.hourly["precipitation_probability"]&.[](idx) || 0
+    %>
+      <div class="h-col <%= "now" if is_now %>">
+        <div class="h-time"><%= is_now ? "Now" : format("%02d", hour) %></div>
+        <div class="h-icon"><%= wx_icon(kind, 26) %></div>
+        <div class="h-temp"><%= wx_round(temp) %>°</div>
+        <% if pop > 30 %><div class="h-precip"><%= pop %>%</div><% end %>
+      </div>
+    <% end %>
+  </div>
+</div>
