@@ -1,0 +1,24 @@
+<div class="daily">
+  <div class="daily-hd">7-DAY FORECAST</div>
+  <%
+    his = weather.daily["temperature_2m_max"]
+    los = weather.daily["temperature_2m_min"]
+    g_max = his.max + 1
+    g_min = los.min - 1
+    span = g_max - g_min
+    span = 1 if span.zero?
+    weather.daily["time"].each_with_index do |t, i|
+      kind = WeatherCode.decode(weather.daily["weather_code"][i]).kind
+      lo_pct = ((los[i] - g_min) / span) * 100
+      hi_pct = ((his[i] - g_min) / span) * 100
+      dow = i.zero? ? "Today" : Date.parse(t).strftime("%a")
+  %>
+    <div class="d-row <%= "today" if i.zero? %>">
+      <div class="d-dow"><%= dow %></div>
+      <div class="d-icon"><%= wx_icon(kind, 24) %></div>
+      <div class="d-lo"><%= wx_round(los[i]) %>°</div>
+      <div class="d-range"><div class="d-range-fill" style="left:<%= lo_pct %>%;width:<%= hi_pct - lo_pct %>%"></div></div>
+      <div class="d-hi"><%= wx_round(his[i]) %>°</div>
+    </div>
+  <% end %>
+</div>

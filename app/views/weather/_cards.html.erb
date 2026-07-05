@@ -1,0 +1,144 @@
+<%
+  cur = weather.current
+  day = weather.daily
+%>
+<div class="cards">
+  <% uv = wx_round(day["uv_index_max"]&.[](0) || cur["uv_index"] || 0) %>
+  <%= link_to weather_metric_path("uv"), class: "card", data: { turbo: false } do %>
+    <div class="card-hd"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="4"/><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="12" y1="3" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="21"/><line x1="3" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="21" y2="12"/></g></svg><span>UV Index</span></div>
+    <div class="card-val"><%= uv %><span class="unit"><%= uv_label(uv) %></span></div>
+    <div class="uv-bar"><div class="uv-thumb" style="left:<%= [uv / 11.0, 1].min * 100 %>%"></div></div>
+    <div class="card-sub"><%= uv < 3 ? "Low for the rest of the day." : "Use sun protection." %></div>
+  <% end %>
+
+  <% sunrise = day["sunrise"][0].to_s[11, 5]
+     sunset = day["sunset"][0].to_s[11, 5]
+     local_hour = cur["time"].to_s[11, 2].to_i %>
+  <%= link_to weather_metric_path("sunset"), class: "card", data: { turbo: false } do %>
+    <div class="card-hd"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 18h18M6 18a6 6 0 0 1 12 0M12 3v3M5 8l2 2M19 8l-2 2"/></svg><span>Sunset</span></div>
+    <div class="card-val" style="font-size:26px"><%= sunset %></div>
+    <%= sunset_arc_svg(sunrise, sunset, local_hour) %>
+    <div class="card-sub" style="margin-top:2px">Sunrise: <%= sunrise %></div>
+  <% end %>
+
+  <%= link_to weather_metric_path("wind"), class: "card", data: { turbo: false } do %>
+    <div class="card-hd"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 8h14a2.5 2.5 0 1 0 0-5M3 12h18M3 16h10a2.5 2.5 0 1 1 0 5"/></svg><span>Wind</span></div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <%= wind_compass_svg(cur["wind_direction_10m"]) %>
+      <div>
+        <div style="font-size:22px;font-weight:300;letter-spacing:-0.02em"><%= wx_round(cur["wind_speed_10m"]) %><span style="font-size:12px;opacity:.7;margin-left:3px"><%= wind_unit(units) %></span></div>
+        <div style="font-size:11px;color:var(--fg-55);margin-top:2px;letter-spacing:0.05em">Wind</div>
+        <div style="font-size:11px;color:var(--fg-55);margin-top:10px;letter-spacing:0.05em">Gusts</div>
+        <div style="font-size:13px;font-weight:400"><%= wx_round(cur["wind_gusts_10m"]) %><span style="font-size:10px;opacity:.7;margin-left:2px"><%= wind_unit(units) %></span></div>
+      </div>
+    </div>
+  <% end %>
+
+  <% feels = wx_round(cur["apparent_temperature"])
+     temp = wx_round(cur["temperature_2m"])
+     diff = wx_round(cur["apparent_temperature"] - cur["temperature_2m"]) %>
+  <%= link_to weather_metric_path("feels-like"), class: "card", data: { turbo: false } do %>
+    <div class="card-hd"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 3v11a3 3 0 1 0 4 0V3a2 2 0 0 0-4 0z"/><circle cx="12" cy="17" r="2" fill="currentColor"/></svg><span>Feels Like</span></div>
+    <div class="mini-big"><%= feels %>°</div>
+    <div class="card-sub"><%= diff.zero? ? "Similar to the actual temperature." : diff.negative? ? "Wind is making it feel #{diff.abs}° cooler." : "Humidity is making it feel #{diff}° warmer." %></div>
+  <% end %>
+
+  <%= link_to weather_metric_path("humidity"), class: "card", data: { turbo: false } do %>
+    <div class="card-hd"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3c4 5 6 8 6 11a6 6 0 1 1-12 0c0-3 2-6 6-11z"/></svg><span>Humidity</span></div>
+    <div class="mini-big"><%= cur["relative_humidity_2m"] %>%</div>
+    <div class="card-sub">The dew point is <%= wx_round(cur["dew_point_2m"]) %>° right now.</div>
+  <% end %>
+
+  <% vis = visibility_value(cur["visibility"], units) %>
+  <%= link_to weather_metric_path("visibility"), class: "card", data: { turbo: false } do %>
+    <div class="card-hd"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><span>Visibility</span></div>
+    <div class="mini-big"><%= vis %> <span style="font-size:18px;opacity:.7"><%= visibility_unit(units) %></span></div>
+    <div class="card-sub"><%= vis > 10 ? "Perfectly clear view." : vis > 5 ? "Slight haze in the distance." : "Reduced by fog or precipitation." %></div>
+  <% end %>
+
+  <% pv = wx_round(cur["pressure_msl"]) %>
+  <%= link_to weather_metric_path("pressure"), class: "card", data: { turbo: false } do %>
+    <div class="card-hd"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 12l4-4"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg><span>Pressure</span></div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <%= pressure_gauge_svg(pv) %>
+      <div>
+        <div style="font-size:22px;font-weight:300;letter-spacing:-0.02em"><%= pv %><span style="font-size:12px;opacity:.7;margin-left:3px">hPa</span></div>
+        <div style="font-size:11px;color:var(--fg-55);margin-top:4px"><%= pressure_trend_label(hourly_window(weather, "pressure_msl")) %></div>
+      </div>
+    </div>
+  <% end %>
+
+  <% if weather.aqi %>
+    <% aqi = weather.aqi.round %>
+    <%= link_to weather_metric_path("air-quality"), class: "card", data: { turbo: false } do %>
+      <div class="card-hd"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 8c2-2 6-2 8 0s6 2 8 0M4 14c2-2 6-2 8 0s6 2 8 0"/></svg><span>Air Quality</span></div>
+      <div class="card-val"><%= aqi %> <span class="unit"><%= aqi_label(aqi) %></span></div>
+      <div class="aqi-scale"><div class="aqi-thumb" style="left:<%= [aqi / 300.0, 1].min * 100 %>%"></div></div>
+      <div class="card-sub" style="margin-top:8px"><%= aqi < 50 ? "Air quality is ideal for outdoor activity." : aqi < 100 ? "Acceptable for most people." : "Sensitive groups should reduce exertion." %></div>
+    <% end %>
+  <% end %>
+
+  <% precip_hours = 6
+     precip_pops = hourly_window(weather, "precipitation_probability", count: precip_hours)
+     precip_mm = hourly_window(weather, "precipitation", count: precip_hours).compact.sum %>
+  <%= link_to weather_metric_path("precipitation"), class: "card", data: { turbo: false } do %>
+    <div class="card-hd"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3c4 5 6 8 6 11a6 6 0 1 1-12 0c0-3 2-6 6-11z"/></svg><span>Precipitation</span></div>
+    <div class="card-val"><%= format("%.1f", precip_mm) %><span class="unit"><%= units == "imperial" ? "in" : "mm" %></span></div>
+    <div class="card-sub" style="margin-top:4px">in the next <%= precip_hours %> hrs</div>
+    <div class="precip-graph">
+      <% precip_pops.each do |pop| %>
+        <div class="precip-bar" style="height:<%= [4, (pop || 0) * 0.4].max.round(1) %>%"></div>
+      <% end %>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--fg-55);margin-top:6px">
+      <span>Now</span><span>+3h</span><span>+6h</span>
+    </div>
+  <% end %>
+
+  <% moon = weather.moon %>
+  <%= link_to weather_metric_path("moon"), class: "card", data: { turbo: false } do %>
+    <div class="card-hd"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 15A8 8 0 1 1 9 4a6 6 0 0 0 11 11z"/></svg><span>Moon</span></div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <%= moon_icon_svg(moon.illumination, moon.waxing, 72) %>
+      <div>
+        <div style="font-size:15px;font-weight:500"><%= moon.phase %></div>
+        <div style="font-size:11px;color:var(--fg-55);margin-top:2px"><%= moon.illumination %>% illuminated</div>
+      </div>
+    </div>
+  <% end %>
+
+  <% pollen = weather.pollen
+     pollen_available = pollen && pollen.values.any? { |v| !v.nil? }
+     dominant_pollen = pollen_available ? pollen.max_by { |_, v| v || 0 } : nil %>
+  <% pollen_levels = ["Low", "Moderate", "High", "Very High"]
+     pollen_colors = ["#6ecf6c", "#c2d84a", "#f2b84a", "#f29537"] %>
+  <%= link_to weather_metric_path("pollen"), class: "card", data: { turbo: false } do %>
+    <div class="card-hd"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="5" r="2"/><circle cx="12" cy="19" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg><span>Pollen</span></div>
+    <% if pollen_available %>
+      <% lvl = pollen_level(dominant_pollen[1])
+         idx = pollen_levels.index(lvl) || 0 %>
+      <div class="card-val" style="font-size:26px"><%= lvl %></div>
+      <div style="display:flex;gap:3px;margin-top:10px;margin-bottom:8px">
+        <% pollen_levels.each_index do |i| %>
+          <div style="flex:1;height:3px;border-radius:2px;background:<%= i <= idx ? pollen_colors[i] : "rgba(255,255,255,0.15)" %>"></div>
+        <% end %>
+      </div>
+      <div class="card-sub"><%= dominant_pollen[0].to_s.sub("_pollen", "").capitalize %> pollen is <%= lvl.downcase %> in your area.</div>
+    <% else %>
+      <div class="card-val" style="font-size:26px">—</div>
+      <div class="card-sub">Not available in this region.</div>
+    <% end %>
+  <% end %>
+
+  <%= link_to weather_metric_path("averages"), class: "card", data: { turbo: false } do %>
+    <div class="card-hd"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18"/></svg><span>Averages</span></div>
+    <% if climate_average %>
+      <% avg_diff = (day["temperature_2m_max"][0] - climate_average.avg_high).round(1) %>
+      <div class="mini-big"><%= avg_diff >= 0 ? "+" : "" %><%= avg_diff %>°</div>
+      <div class="card-sub">Today is <%= avg_diff >= 0 ? "warmer" : "cooler" %> than the 10-year average of <%= wx_round(climate_average.avg_high) %>°.</div>
+    <% else %>
+      <div class="mini-big">10-yr</div>
+      <div class="card-sub">See how today compares to the historical average.</div>
+    <% end %>
+  <% end %>
+</div>

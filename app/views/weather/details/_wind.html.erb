@@ -1,0 +1,34 @@
+<%
+  speed = wx_round(weather.current["wind_speed_10m"])
+  gusts = wx_round(weather.current["wind_gusts_10m"])
+  direction_deg = weather.current["wind_direction_10m"]
+  unit = wind_unit(units)
+%>
+<div class="detail-hero">
+  <div class="detail-hero-val"><%= speed %><span class="unit-lg"><%= unit %></span></div>
+  <div class="detail-hero-sub">Gusting to <%= gusts %> <%= unit %> from the <%= wind_compass_label(direction_deg) %>.</div>
+</div>
+
+<div class="detail-section">
+  <div class="detail-section-hd">COMPASS</div>
+  <div style="display:flex;justify-content:center;padding:8px 0">
+    <%= wind_compass_detail_svg(direction_deg, speed, unit) %>
+  </div>
+</div>
+
+<div class="detail-section">
+  <div class="detail-section-hd">WIND DETAILS</div>
+  <div class="detail-stats">
+    <div class="detail-stat"><div class="lbl">Wind</div><div class="val"><%= speed %> <%= unit %></div><div class="sub">From <%= wind_compass_label(direction_deg) %> (<%= direction_deg ? direction_deg.round : "—" %>°)</div></div>
+    <div class="detail-stat"><div class="lbl">Gusts</div><div class="val"><%= gusts %> <%= unit %></div><div class="sub">Peaks over 10 min</div></div>
+    <div class="detail-stat"><div class="lbl">Beaufort</div><div class="val"><%= beaufort_label(weather.current["wind_speed_10m"], units) %></div></div>
+  </div>
+</div>
+
+<div class="detail-section">
+  <div class="detail-section-hd">TODAY'S WIND SPEED</div>
+  <div>
+    <%= sparkline_svg(hourly_window(weather, "wind_speed_10m"), color: "#8cbfff", fill: "rgba(140,191,255,0.14)") %>
+    <div class="axis"><span>Now</span><span>+12h</span><span>+24h</span></div>
+  </div>
+</div>

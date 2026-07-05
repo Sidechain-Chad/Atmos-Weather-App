@@ -1,0 +1,34 @@
+<%
+  moon = weather.moon
+  today = Date.parse(weather.current["time"])
+  days_to_full = (moon.next_full_moon - today).to_i
+  days_to_new = (moon.next_new_moon - today).to_i
+%>
+<div class="detail-hero">
+  <div class="detail-hero-val" style="font-size:clamp(48px, calc(48px + 24 * ((100vw - 360px) / 280)), 72px)"><%= moon.phase %></div>
+  <div class="detail-hero-sub"><%= moon.illumination %>% illuminated. Next full moon in <%= days_to_full %> day<%= "s" unless days_to_full == 1 %>.</div>
+</div>
+
+<div class="detail-section">
+  <div class="detail-section-hd">TONIGHT</div>
+  <div style="display:flex;justify-content:center;padding:10px 0">
+    <%= moon_icon_svg(moon.illumination, moon.waxing, 160) %>
+  </div>
+</div>
+
+<div class="detail-section">
+  <div class="detail-section-hd">MOON DETAILS</div>
+  <div class="detail-stats">
+    <div class="detail-stat"><div class="lbl">Illumination</div><div class="val"><%= moon.illumination %>%</div></div>
+    <div class="detail-stat"><div class="lbl">Moon Age</div><div class="val"><%= moon.age_days %> days</div></div>
+    <div class="detail-stat"><div class="lbl">Next Full</div><div class="val"><%= moon.next_full_moon.strftime("%b %-d") %></div><div class="sub">In <%= days_to_full %> day<%= "s" unless days_to_full == 1 %></div></div>
+    <div class="detail-stat"><div class="lbl">Next New</div><div class="val"><%= moon.next_new_moon.strftime("%b %-d") %></div><div class="sub">In <%= days_to_new %> day<%= "s" unless days_to_new == 1 %></div></div>
+  </div>
+</div>
+
+<div class="detail-section">
+  <div class="detail-section-hd">ABOUT THIS DATA</div>
+  <div class="detail-prose">
+    <p>Phase and illumination are calculated from the lunar cycle. Moonrise, moonset, and quarter-phase dates aren't shown here — they need the moon's exact position for your location, which this simplified calculation doesn't attempt.</p>
+  </div>
+</div>

@@ -1,0 +1,39 @@
+<%
+  humidity = weather.current["relative_humidity_2m"]
+  comfort = humidity < 40 ? "Dry" : humidity < 60 ? "Comfortable" : humidity < 75 ? "Humid" : "Very Humid"
+  # Magnus-Tetens: saturation vapor pressure from temperature, scaled by RH —
+  # real atmospheric physics from fields we already fetch, not a guess.
+  temp = weather.current["temperature_2m"]
+  saturation_vapor_pressure = 6.1094 * Math.exp((17.625 * temp) / (temp + 243.04))
+  vapor_pressure = (saturation_vapor_pressure * humidity / 100.0).round(1)
+%>
+<div class="detail-hero">
+  <div class="detail-hero-val"><%= humidity %>%</div>
+  <div class="detail-hero-sub">The dew point is <%= wx_round(weather.current["dew_point_2m"]) %>° right now.</div>
+</div>
+
+<div class="detail-section">
+  <div class="detail-section-hd">TODAY'S HUMIDITY</div>
+  <div>
+    <%= sparkline_svg(hourly_window(weather, "relative_humidity_2m"), color: "#74d0e0", fill: "rgba(116,208,224,0.14)") %>
+    <div class="axis"><span>Now</span><span>+12h</span><span>+24h</span></div>
+  </div>
+</div>
+
+<div class="detail-section">
+  <div class="detail-section-hd">DETAILS</div>
+  <div class="detail-stats">
+    <div class="detail-stat"><div class="lbl">Relative Humidity</div><div class="val"><%= humidity %>%</div><div class="sub"><%= comfort %></div></div>
+    <div class="detail-stat"><div class="lbl">Dew Point</div><div class="val"><%= wx_round(weather.current["dew_point_2m"]) %>°</div><div class="sub">Condensation at</div></div>
+    <div class="detail-stat"><div class="lbl">Vapor Pressure</div><div class="val"><%= vapor_pressure %> hPa</div></div>
+    <div class="detail-stat"><div class="lbl">Comfort</div><div class="val"><%= comfort %></div></div>
+  </div>
+</div>
+
+<div class="detail-section">
+  <div class="detail-section-hd">ABOUT HUMIDITY</div>
+  <div class="detail-prose">
+    <p>Relative humidity is the amount of water vapor in the air as a percentage of what the air can hold at the current temperature.</p>
+    <p>The dew point is the temperature air must cool to for water to condense — a more direct measure of how muggy it feels than relative humidity.</p>
+  </div>
+</div>

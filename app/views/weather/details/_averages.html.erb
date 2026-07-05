@@ -1,0 +1,46 @@
+<% if climate_average %>
+  <%
+    today_high = wx_round(weather.daily["temperature_2m_max"][0])
+    today_low = wx_round(weather.daily["temperature_2m_min"][0])
+    diff = (weather.daily["temperature_2m_max"][0] - climate_average.avg_high).round(1)
+    diff_low = (weather.daily["temperature_2m_min"][0] - climate_average.avg_low).round(1)
+    today_month = Date.parse(weather.current["time"]).month
+  %>
+  <div class="detail-hero">
+    <div class="detail-hero-val"><%= diff >= 0 ? "+" : "" %><%= diff %>°</div>
+    <div class="detail-hero-sub">
+      Today's high of <%= today_high %>° is <%= diff.abs.round(1) %>° <%= diff >= 0 ? "warmer" : "cooler" %> than the
+      <%= climate_average.years %>-year average of <%= climate_average.avg_high %>° for this date.
+    </div>
+  </div>
+
+  <% if annual_climate.present? %>
+    <div class="detail-section">
+      <div class="detail-section-hd">ANNUAL TEMPERATURE</div>
+      <%= annual_temperature_chart_svg(annual_climate, today_month: today_month, today_hi: today_high, today_lo: today_low) %>
+      <div style="display:flex;gap:14px;margin-top:4px;font-size:12px;color:rgba(255,255,255,0.7)">
+        <span style="display:flex;align-items:center;gap:6px"><span style="width:16px;height:2px;background:#ff9966;display:inline-block"></span>Average High</span>
+        <span style="display:flex;align-items:center;gap:6px"><span style="width:16px;height:2px;background:#74b9ff;display:inline-block"></span>Average Low</span>
+      </div>
+    </div>
+  <% end %>
+
+  <div class="detail-section">
+    <div class="detail-section-hd">TODAY VS. AVERAGE</div>
+    <div class="detail-stats">
+      <div class="detail-stat"><div class="lbl">Today High</div><div class="val"><%= today_high %>°</div><div class="sub"><%= diff >= 0 ? "+" : "" %><%= diff %>° vs avg</div></div>
+      <div class="detail-stat"><div class="lbl">Today Low</div><div class="val"><%= today_low %>°</div><div class="sub"><%= diff_low >= 0 ? "+" : "" %><%= diff_low %>° vs avg</div></div>
+      <div class="detail-stat"><div class="lbl">Avg. High</div><div class="val"><%= climate_average.avg_high %>°</div></div>
+      <div class="detail-stat"><div class="lbl">Avg. Low</div><div class="val"><%= climate_average.avg_low %>°</div></div>
+    </div>
+  </div>
+
+  <div class="detail-section">
+    <div class="detail-section-hd">ABOUT THIS DATA</div>
+    <div class="detail-prose">
+      <p>Averages are computed from Open-Meteo's historical archive across the past <%= climate_average.years %> years for this calendar date.</p>
+    </div>
+  </div>
+<% else %>
+  <div class="detail-hero"><div class="detail-hero-sub">Historical data isn't available for this location right now.</div></div>
+<% end %>

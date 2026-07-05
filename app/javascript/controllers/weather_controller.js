@@ -1,53 +1,10 @@
 import { Controller } from "@hotwired/stimulus"
 
-// ATMOS — apple layout, ported to Stimulus.
-// Live data from Open-Meteo. Renders the hero, hourly, 7-day and detail cards,
-// and drives the animated sky background + weather FX overlays.
-
-// ---------- WMO weather_code -> condition label + icon kind ----------
-const WMO = {
-  0:["Clear","clear"], 1:["Mainly Clear","clear"], 2:["Partly Cloudy","partly"], 3:["Overcast","cloud"],
-  45:["Fog","fog"], 48:["Rime Fog","fog"],
-  51:["Light Drizzle","drizzle"], 53:["Drizzle","drizzle"], 55:["Heavy Drizzle","drizzle"],
-  56:["Freezing Drizzle","sleet"], 57:["Freezing Drizzle","sleet"],
-  61:["Light Rain","rain"], 63:["Rain","rain"], 65:["Heavy Rain","rain"],
-  66:["Freezing Rain","sleet"], 67:["Freezing Rain","sleet"],
-  71:["Light Snow","snow"], 73:["Snow","snow"], 75:["Heavy Snow","snow"], 77:["Snow Grains","snow"],
-  80:["Rain Showers","rain"], 81:["Rain Showers","rain"], 82:["Violent Showers","rain"],
-  85:["Snow Showers","snow"], 86:["Snow Showers","snow"],
-  95:["Thunderstorm","thunder"], 96:["Thunderstorm + Hail","hail"], 99:["Thunderstorm + Hail","hail"],
-}
-const decode = c => WMO[c] || ["—","cloud"]
-
-// ---------- SVG weather glyphs ----------
-function wxIcon(kind, size = 28) {
-  const o = `xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 32 32"`
-  switch (kind) {
-    case "clear": return `<svg ${o}>
-      <defs><radialGradient id="sg${size}"><stop offset="0%" stop-color="#ffe8a8"/><stop offset="100%" stop-color="#f5a635"/></radialGradient></defs>
-      <circle cx="16" cy="16" r="6" fill="url(#sg${size})"/>
-      <g stroke="#ffd78a" stroke-width="2" stroke-linecap="round">
-        <line x1="16" y1="3" x2="16" y2="6"/><line x1="16" y1="26" x2="16" y2="29"/>
-        <line x1="3" y1="16" x2="6" y2="16"/><line x1="26" y1="16" x2="29" y2="16"/>
-        <line x1="6" y1="6" x2="8" y2="8"/><line x1="24" y1="24" x2="26" y2="26"/>
-        <line x1="6" y1="26" x2="8" y2="24"/><line x1="24" y1="8" x2="26" y2="6"/></g></svg>`
-    case "partly": return `<svg ${o}>
-      <circle cx="11" cy="11" r="4.5" fill="#ffd78a"/>
-      <path d="M9 24h13a4.5 4.5 0 0 0 0-9 6 6 0 0 0-11.6-1.5A4 4 0 0 0 9 24z" fill="#f0f4fa" stroke="#c8d5e6" stroke-width="0.8"/></svg>`
-    case "rain": case "drizzle": return `<svg ${o}>
-      <path d="M9 20h14a5 5 0 0 0 0-10 6.5 6.5 0 0 0-12.5-1.5A4 4 0 0 0 9 20z" fill="#c8d5e6"/>
-      <g stroke="#5aa0e0" stroke-width="2" stroke-linecap="round">
-        <line x1="11" y1="23" x2="10" y2="27"/><line x1="16" y1="23" x2="15" y2="28"/><line x1="21" y1="23" x2="20" y2="27"/></g></svg>`
-    case "snow": case "sleet": return `<svg ${o}>
-      <path d="M9 20h14a5 5 0 0 0 0-10 6.5 6.5 0 0 0-12.5-1.5A4 4 0 0 0 9 20z" fill="#e5ecf5"/>
-      <g fill="#fff"><circle cx="11" cy="26" r="1.4"/><circle cx="16" cy="27" r="1.4"/><circle cx="21" cy="26" r="1.4"/></g></svg>`
-    case "thunder": case "hail": return `<svg ${o}>
-      <path d="M9 18h14a5 5 0 0 0 0-10 6.5 6.5 0 0 0-12.5-1.5A4 4 0 0 0 9 18z" fill="#aab6c8"/>
-      <path d="M16 18l-4 7h3l-2 5 7-9h-4l3-3z" fill="#ffd24a"/></svg>`
-    default: return `<svg ${o}>
-      <path d="M9 24h14a5 5 0 0 0 0-10 6.5 6.5 0 0 0-12.5-1.5A4 4 0 0 0 9 24z" fill="#dee6f2" stroke="#b8c5d8" stroke-width="0.8"/></svg>`
-  }
-}
+// ATMOS — Stimulus now only does DOM manipulation and browser APIs (sky/FX
+// animation, geolocation, search-as-you-type suggestions). Weather data is
+// fetched and rendered server-side (WeatherController + WeatherService); the
+// "weather_dashboard" turbo-frame is (re)loaded whenever the city, units, or
+// geolocation changes.
 
 // ---------- sky palettes ----------
 const PALETTES = {
@@ -65,6 +22,14 @@ const OVERCAST = {
   sleet: 0.72, snow: 0.5, hail: 0.8, thunder: 0.88,
 }
 
+// ---------- ambient sound ----------
+const RAIN_KINDS = ["rain", "drizzle", "thunder", "sleet"]
+const SNOW_KINDS = ["snow", "hail"]
+const SOUND_FADE_MS = 2000
+const MUTE_STORAGE_KEY = "atmos.muted"
+const UNMUTED_ICON = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13" opacity="0.6"/></svg>`
+const MUTED_ICON = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H3v6h3l5 4V5z"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>`
+
 // Blend a hex color toward an overcast grey by amount t (0..1).
 function overcastBlend(hex, t, greyHex = "#5a626e") {
   const h2r = h => { const n = parseInt(h.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255] }
@@ -78,24 +43,21 @@ export default class extends Controller {
   static targets = [
     "skyBg", "skySun", "skyStars", "cloudOverlay", "rainOverlay", "snowOverlay",
     "fogOverlay", "thunderOverlay", "hailOverlay",
-    "cityInput", "spinner", "searchResults", "errorAlert", "errorMsg",
-    "hero", "hourly", "daily", "cards", "unitMetric", "unitImperial"
+    "cityInput", "searchIcon", "spinner", "searchResults",
+    "dashboard", "conditionData", "unitMetric", "unitImperial",
+    "soundToggle", "ambientAudio", "weatherAudio"
   ]
+  static values = { rootUrl: String }
 
   connect() {
-    this.units = localStorage.getItem("atmos.units") || "metric"
-    this.syncUnitButtons()
     this.selectedIndex = -1
     this.initStars()
-
-    // Always load something immediately so the page is never blank,
-    // then upgrade to the user's real location if geolocation is granted.
-    const lastCity = localStorage.getItem("atmos.lastCity") || "Cape Town"
-    this.fetchWeather(lastCity)
+    this.initSound()
+    this.dashboardLoaded()
 
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        p => this.fetchByCoords(p.coords.latitude, p.coords.longitude),
+        p => this.navigate({ lat: p.coords.latitude, lon: p.coords.longitude }),
         () => { /* keep the city already loaded */ },
         { timeout: 8000, maximumAge: 600000 }
       )
@@ -104,22 +66,163 @@ export default class extends Controller {
 
   disconnect() {
     if (this._thunderInterval) clearInterval(this._thunderInterval)
+    if (this.hasAmbientAudioTarget) clearInterval(this.ambientAudioTarget._fadeInterval)
+    if (this.hasWeatherAudioTarget) clearInterval(this.weatherAudioTarget._fadeInterval)
+  }
+
+  // ============ navigation (reloads the weather_dashboard turbo-frame) ============
+  navigate(params) {
+    const url = new URL(this.rootUrlValue, window.location.origin)
+    Object.entries(params).forEach(([k, v]) => { if (v !== undefined && v !== null && v !== "") url.searchParams.set(k, v) })
+    this.dashboardTarget.src = url.pathname + url.search
+  }
+
+  navigateToLocation(e) {
+    const d = e.currentTarget.dataset
+    this.navigate({ lat: d.lat, lon: d.lon, name: d.name, country: d.country })
+  }
+
+  // Detail pages share this controller for sky/FX only and have no search bar,
+  // so the spinner target won't exist there — guard instead of throwing.
+  showSpinner() {
+    if (!this.hasSpinnerTarget) return
+    this.spinnerTarget.style.display = "block"
+    if (this.hasSearchIconTarget) this.searchIconTarget.style.display = "none"
+    if (this.hasCityInputTarget) {
+      this._placeholder = this.cityInputTarget.placeholder
+      this.cityInputTarget.placeholder = ""
+    }
+  }
+
+  hideSpinner() {
+    if (!this.hasSpinnerTarget) return
+    this.spinnerTarget.style.display = "none"
+    if (this.hasSearchIconTarget) this.searchIconTarget.style.display = ""
+    if (this.hasCityInputTarget && this._placeholder !== undefined) this.cityInputTarget.placeholder = this._placeholder
+  }
+
+  // Runs after every dashboard load: initial page render AND every subsequent
+  // turbo-frame navigation (unit toggle, city select, geolocation upgrade).
+  dashboardLoaded() {
+    this.hideSpinner()
+    if (!this.hasConditionDataTarget) return
+
+    const kind = this.conditionDataTarget.dataset.condition
+    const localHour = parseInt(this.conditionDataTarget.dataset.localHour, 10)
+    const windy = this.conditionDataTarget.dataset.windy === "true"
+    const phase = phaseFromHour(localHour)
+    this.applyPalette(phase, kind)
+    this.setWeatherFx(kind)
+    this.updateSound(phase, kind, windy)
+    if (this.hasDashboardTarget) {
+      this.dashboardTarget.querySelectorAll(".hero,.hourly,.daily,.cards,.my-locations").forEach(el => el.style.opacity = 1)
+    }
   }
 
   // ============ units ============
   setUnits(e) {
-    this.units = e.currentTarget.dataset.units
-    localStorage.setItem("atmos.units", this.units)
-    this.syncUnitButtons()
-    if (this.weatherData) this.render(this.weatherData)
+    const units = e.currentTarget.dataset.units
+    this.unitMetricTarget.classList.toggle("active", units === "metric")
+    this.unitImperialTarget.classList.toggle("active", units === "imperial")
+    this.navigate({ units })
   }
-  syncUnitButtons() {
-    this.unitMetricTarget.classList.toggle("active", this.units === "metric")
-    this.unitImperialTarget.classList.toggle("active", this.units === "imperial")
+
+  // ============ ambient sound ============
+  // Muted by default (no stored preference yet) — sound only ever starts as a
+  // direct result of clicking the speaker icon, since that's a real user
+  // gesture and needs no autoplay workaround. Audibility is controlled purely
+  // via el.volume (faded by fadeAudio), not the `muted` media property, so
+  // toggling gets the same 2s fade as everything else.
+  initSound() {
+    this.muted = localStorage.getItem(MUTE_STORAGE_KEY) !== "0"
+    this.updateSoundToggleUI()
   }
-  t(c)    { return this.units === "metric" ? Math.round(c) : Math.round(c * 9 / 5 + 32) }
-  wind(k) { return this.units === "metric" ? Math.round(k) : Math.round(k * 0.621371) }
-  get windUnit() { return this.units === "metric" ? "km/h" : "mph" }
+
+  toggleSound() {
+    this.muted = !this.muted
+    localStorage.setItem(MUTE_STORAGE_KEY, this.muted ? "1" : "0")
+    this.updateSoundToggleUI()
+    if (!this.hasAmbientAudioTarget) return
+
+    if (this.muted) {
+      [this.ambientAudioTarget, this.weatherAudioTarget].forEach(el => this.fadeAudio(el, 0, SOUND_FADE_MS, () => el.pause()))
+      return
+    }
+    if (this.ambientAudioTarget.src) {
+      this.ambientAudioTarget.play().catch(() => {})
+      this.fadeAudio(this.ambientAudioTarget, this._ambientVolume ?? 0.5, SOUND_FADE_MS)
+    }
+    if (this.weatherAudioTarget.src && this._weatherVolume) {
+      this.weatherAudioTarget.play().catch(() => {})
+      this.fadeAudio(this.weatherAudioTarget, this._weatherVolume, SOUND_FADE_MS)
+    }
+  }
+
+  updateSoundToggleUI() {
+    if (!this.hasSoundToggleTarget) return
+    this.soundToggleTarget.setAttribute("aria-label", this.muted ? "Unmute ambient sound" : "Mute ambient sound")
+    this.soundToggleTarget.setAttribute("title", this.muted ? "Sound off" : "Sound on")
+    this.soundToggleTarget.classList.toggle("muted", this.muted)
+    this.soundToggleTarget.innerHTML = this.muted ? MUTED_ICON : UNMUTED_ICON
+  }
+
+  // Base ambient loop is day/night; a weather loop crossfades in on top when
+  // conditions call for it, rather than replacing the ambience. Overcast skies
+  // ("cloud" — WeatherCode labels WMO code 3 "Overcast" but its FX kind is
+  // "cloud") get the wind loop too: a grey, fully-clouded sky reads as moodier
+  // and breezier, not the same bright "day" ambience as clear/partly-cloudy.
+  updateSound(phase, kind, windy) {
+    if (!this.hasAmbientAudioTarget || !this.hasWeatherAudioTarget) return
+
+    const ambient = phase === "night" ? "night" : "day"
+    const weather = RAIN_KINDS.includes(kind) ? "rain" : SNOW_KINDS.includes(kind) ? "snow" : (windy || kind === "cloud") ? "wind" : null
+
+    this._ambientVolume = 0.5
+    this._weatherVolume = weather ? 0.55 : 0
+
+    this.switchTrack(this.ambientAudioTarget, `/audio/${ambient}.mp3`, this._ambientVolume)
+    if (weather) {
+      this.switchTrack(this.weatherAudioTarget, `/audio/${weather}.mp3`, this._weatherVolume)
+    } else if (this.weatherAudioTarget.dataset.src) {
+      this.weatherAudioTarget.dataset.src = ""
+      if (this.muted) this.weatherAudioTarget.pause()
+      else this.fadeAudio(this.weatherAudioTarget, 0, SOUND_FADE_MS, () => this.weatherAudioTarget.pause())
+    }
+  }
+
+  // Keeps el.src pointed at the right track always (even while muted, so
+  // unmuting has something to play immediately) but only actually plays/fades
+  // audibly when unmuted.
+  switchTrack(el, src, targetVolume) {
+    if (el.dataset.src === src) return
+    el.dataset.src = src
+
+    const start = () => {
+      el.src = src
+      el.currentTime = 0
+      el.volume = 0
+      if (this.muted) return
+      el.play().catch(() => {})
+      this.fadeAudio(el, targetVolume, SOUND_FADE_MS)
+    }
+    if (el.paused || this.muted) { start(); return }
+    this.fadeAudio(el, 0, SOUND_FADE_MS / 2, start)
+  }
+
+  fadeAudio(el, target, ms, onDone) {
+    clearInterval(el._fadeInterval)
+    const steps = Math.max(1, Math.round(ms / 50))
+    const start = el.volume, delta = target - start
+    let i = 0
+    el._fadeInterval = setInterval(() => {
+      i++
+      el.volume = Math.max(0, Math.min(1, start + delta * (i / steps)))
+      if (i >= steps) {
+        clearInterval(el._fadeInterval)
+        if (onDone) onDone()
+      }
+    }, 50)
+  }
 
   // ============ search ============
   async handleInput() {
@@ -146,9 +249,9 @@ export default class extends Controller {
     this.searchResultsTarget.querySelectorAll(".search-result").forEach(el => {
       el.addEventListener("mousedown", () => {
         const d = el.dataset
-        this.cityInputTarget.value = d.name
+        this.cityInputTarget.value = ""
         this.searchResultsTarget.innerHTML = ""
-        this.executeFetch(+d.lat, +d.lon, d.name, d.country)
+        this.navigate({ lat: d.lat, lon: d.lon, name: d.name, country: d.country })
       })
     })
   }
@@ -159,255 +262,6 @@ export default class extends Controller {
     else if (e.key === "ArrowUp") { this.selectedIndex = Math.max(this.selectedIndex - 1, 0); e.preventDefault() }
     else if (e.key === "Enter") { e.preventDefault(); if (items[this.selectedIndex]) items[this.selectedIndex].dispatchEvent(new Event("mousedown")); return }
     items.forEach((el, i) => el.classList.toggle("active", i === this.selectedIndex))
-  }
-
-  // ============ fetch ============
-  async fetchByCoords(lat, lon) {
-    let name = "Current Location", country = ""
-    try {
-      const r = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`)
-      const j = await r.json(); name = j.city || j.locality || name; country = j.countryCode || ""
-    } catch { /* ignore */ }
-    this.executeFetch(lat, lon, name, country)
-  }
-  async fetchWeather(city) {
-    try {
-      const r = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en&format=json`)
-      const j = await r.json()
-      if (!j.results || !j.results.length) return this.showError(`Couldn't find "${city}"`)
-      const g = j.results[0]
-      this.executeFetch(g.latitude, g.longitude, g.name, g.country_code || "")
-    } catch { this.showError("Network error") }
-  }
-  async executeFetch(lat, lon, name, country) {
-    this.spinnerTarget.style.display = "block"
-    try {
-      const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
-        `&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code,` +
-        `cloud_cover,pressure_msl,wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,dew_point_2m,uv_index` +
-        `&hourly=temperature_2m,weather_code,precipitation_probability` +
-        `&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,uv_index_max,` +
-        `precipitation_sum,precipitation_probability_max&timezone=auto&forecast_days=7`
-      const aqiUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=us_aqi`
-      const [wRes, aRes] = await Promise.all([fetch(weatherUrl), fetch(aqiUrl)])
-      const w = await wRes.json()
-      const a = await aRes.json().catch(() => ({}))
-      this.weatherData = { w, aqi: a?.current?.us_aqi ?? null, name, country }
-      localStorage.setItem("atmos.lastCity", name)
-      this.render(this.weatherData)
-    } catch (e) {
-      console.error("ATMOS fetch/render error:", e)
-      this.showError("Couldn't load weather")
-    } finally {
-      this.spinnerTarget.style.display = "none"
-    }
-  }
-
-  // ============ render ============
-  render({ w, aqi, name, country }) {
-    const cur = w.current, day = w.daily
-    const [label, kind] = decode(cur.weather_code)
-    const localHour = new Date(cur.time).getHours()
-    const phase = phaseFromHour(localHour)
-
-    console.log("ATMOS render: start", { kind, phase, localHour })
-
-    try { this.applyPalette(phase, kind); console.log("ATMOS render: applyPalette OK") }
-    catch(e) { console.error("ATMOS render: applyPalette THREW", e); throw e }
-
-    try { this.setWeatherFx(kind); console.log("ATMOS render: setWeatherFx OK") }
-    catch(e) { console.error("ATMOS render: setWeatherFx THREW", e); throw e }
-
-    const sunrise = (day.sunrise[0] || "").slice(11, 16)
-    const sunset  = (day.sunset[0]  || "").slice(11, 16)
-
-    try {
-      this.heroTarget.innerHTML = `
-        <div class="hero-loc">${name}${country ? `, ${country}` : ""}</div>
-        <div class="hero-region">${label}</div>
-        <div class="hero-temp">${this.t(cur.temperature_2m)}<span class="deg">°</span></div>
-        <div class="hero-cond">${label}</div>
-        <div class="hero-hilo">H:${this.t(day.temperature_2m_max[0])}°&nbsp;&nbsp;L:${this.t(day.temperature_2m_min[0])}°</div>
-        ${["rain", "drizzle", "thunder"].includes(kind)
-          ? `<div class="alert"><span class="dot"></span><span>Rain expected today</span><span class="arrow">›</span></div>` : ""}`
-      console.log("ATMOS render: hero OK")
-    } catch(e) { console.error("ATMOS render: hero THREW", e); throw e }
-
-    try { this.renderHourly(w); console.log("ATMOS render: renderHourly OK") }
-    catch(e) { console.error("ATMOS render: renderHourly THREW", e); throw e }
-
-    try { this.renderDaily(w); console.log("ATMOS render: renderDaily OK") }
-    catch(e) { console.error("ATMOS render: renderDaily THREW", e); throw e }
-
-    try { this.renderCards({ cur, day, aqi, sunrise, sunset, localHour }); console.log("ATMOS render: renderCards OK") }
-    catch(e) { console.error("ATMOS render: renderCards THREW", e); throw e }
-
-    try {
-      this.heroTarget.parentElement.querySelectorAll(".hero,.hourly,.daily,.cards")
-        .forEach(el => el.style.opacity = 1)
-      console.log("ATMOS render: opacity reveal OK")
-    } catch(e) { console.error("ATMOS render: opacity reveal THREW", e); throw e }
-  }
-
-  renderHourly(w) {
-    const h = w.hourly
-    const startIdx = Math.max(0, h.time.findIndex(t => new Date(t) >= new Date(w.current.time)))
-    let cols = ""
-    for (let i = 0; i < 12; i++) {
-      const idx = startIdx + i
-      if (idx >= h.time.length) break
-      const hr = new Date(h.time[idx]).getHours()
-      const [, kind] = decode(h.weather_code[idx])
-      const pop = h.precipitation_probability ? h.precipitation_probability[idx] : 0
-      cols += `
-        <div class="h-col ${i === 0 ? "now" : ""}">
-          <div class="h-time">${i === 0 ? "Now" : String(hr).padStart(2, "0")}</div>
-          <div class="h-icon">${wxIcon(kind, 26)}</div>
-          <div class="h-temp">${this.t(h.temperature_2m[idx])}°</div>
-          ${pop > 30 ? `<div class="h-precip">${pop}%</div>` : ""}
-        </div>`
-    }
-    this.hourlyTarget.innerHTML = `
-      <div class="hourly">
-        <div class="hourly-hd">HOURLY FORECAST</div>
-        <div class="hourly-scroll">${cols}</div>
-      </div>`
-  }
-
-  renderDaily(w) {
-    const d = w.daily
-    const his = d.temperature_2m_max, los = d.temperature_2m_min
-    const gMax = Math.max(...his) + 1, gMin = Math.min(...los) - 1, span = gMax - gMin || 1
-    const rows = d.time.map((t, i) => {
-      const [, kind] = decode(d.weather_code[i])
-      const loPct = ((los[i] - gMin) / span) * 100
-      const hiPct = ((his[i] - gMin) / span) * 100
-      const dow = i === 0 ? "Today" : new Date(t).toLocaleDateString("en", { weekday: "short" })
-      return `
-        <div class="d-row ${i === 0 ? "today" : ""}">
-          <div class="d-dow">${dow}</div>
-          <div class="d-icon">${wxIcon(kind, 24)}</div>
-          <div class="d-lo">${this.t(los[i])}°</div>
-          <div class="d-range"><div class="d-range-fill" style="left:${loPct}%;width:${hiPct - loPct}%"></div></div>
-          <div class="d-hi">${this.t(his[i])}°</div>
-        </div>`
-    }).join("")
-    this.dailyTarget.innerHTML = `<div class="daily"><div class="daily-hd">7-DAY FORECAST</div>${rows}</div>`
-  }
-
-  cardHeader(icon, title) {
-    return `<div class="card-hd">${icon}<span>${title}</span></div>`
-  }
-
-  renderCards({ cur, day, aqi, sunrise, sunset, localHour }) {
-    const C = []
-
-    // UV
-    const uv = Math.round(day.uv_index_max[0] ?? cur.uv_index ?? 0)
-    const uvLabel = uv < 3 ? "Low" : uv < 6 ? "Moderate" : uv < 8 ? "High" : uv < 11 ? "Very High" : "Extreme"
-    C.push(`<div class="card">
-      ${this.cardHeader(`<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="4"/><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="12" y1="3" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="21"/><line x1="3" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="21" y2="12"/></g></svg>`, "UV Index")}
-      <div class="card-val">${uv}<span class="unit">${uvLabel}</span></div>
-      <div class="uv-bar"><div class="uv-thumb" style="left:${Math.min(uv / 11, 1) * 100}%"></div></div>
-      <div class="card-sub">${uv < 3 ? "Low for the rest of the day." : "Use sun protection."}</div></div>`)
-
-    // Sunset arc
-    const toHr = s => { const [h, m] = s.split(":").map(Number); return h + m / 60 }
-    const sr = toHr(sunrise || "06:00"), ss = toHr(sunset || "18:00")
-    const sp = Math.max(0.001, ss - sr)
-    const pct = Math.max(0, Math.min(1, (localHour - sr) / sp))
-    const ang = Math.PI * (1 - pct), cx = 100, cy = 66, r = 66
-    const sx = cx + r * Math.cos(ang), sy = cy - r * Math.sin(ang)
-    C.push(`<div class="card">
-      ${this.cardHeader(`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 18h18M6 18a6 6 0 0 1 12 0M12 3v3M5 8l2 2M19 8l-2 2"/></svg>`, "Sunset")}
-      <div class="card-val" style="font-size:26px">${sunset}</div>
-      <svg class="sun-arc" viewBox="0 0 200 84">
-        <path d="M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="1" stroke-dasharray="2 3"/>
-        <path d="M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${sx} ${sy}" fill="none" stroke="#ffd78a" stroke-width="2"/>
-        <circle cx="${sx}" cy="${sy}" r="5" fill="#ffe8a8"/>
-        <line x1="20" y1="${cy}" x2="180" y2="${cy}" stroke="rgba(255,255,255,0.2)" stroke-width="1"/></svg>
-      <div class="card-sub" style="margin-top:2px">Sunrise: ${sunrise}</div></div>`)
-
-    // Wind compass
-    const ws = this.wind(cur.wind_speed_10m), wd = cur.wind_direction_10m
-    const dirs = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
-    const wcx = 45, wcy = 45, wr = 36, rad = (wd - 90) * Math.PI / 180
-    const ax = wcx + (wr - 12) * Math.cos(rad), ay = wcy + (wr - 12) * Math.sin(rad)
-    const ticks = dirs.map((dd, i) => {
-      const aa = (i * 45 - 90) * Math.PI / 180
-      const tx = wcx + (wr + 4) * Math.cos(aa), ty = wcy + (wr + 4) * Math.sin(aa) + 3
-      return `<text x="${tx}" y="${ty}" text-anchor="middle" font-size="7" fill="${dd === "N" ? "#fff" : "rgba(255,255,255,0.5)"}" font-weight="${dd === "N" ? 700 : 400}">${dd}</text>`
-    }).join("")
-    C.push(`<div class="card">
-      ${this.cardHeader(`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 8h14a2.5 2.5 0 1 0 0-5M3 12h18M3 16h10a2.5 2.5 0 1 1 0 5"/></svg>`, "Wind")}
-      <div style="display:flex;align-items:center;gap:8px">
-        <svg viewBox="0 0 90 90" style="width:80px;height:80px;flex:0 0 80px">
-          <circle cx="${wcx}" cy="${wcy}" r="${wr}" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
-          <circle cx="${wcx}" cy="${wcy}" r="${wr - 8}" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="1" stroke-dasharray="2 3"/>
-          ${ticks}
-          <line x1="${wcx}" y1="${wcy}" x2="${ax}" y2="${ay}" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
-          <circle cx="${wcx}" cy="${wcy}" r="2" fill="#fff"/></svg>
-        <div>
-          <div style="font-size:22px;font-weight:300">${ws}<span style="font-size:12px;opacity:.7;margin-left:3px">${this.windUnit}</span></div>
-          <div style="font-size:11px;color:var(--fg-55);margin-top:10px">Gusts</div>
-          <div style="font-size:13px">${this.wind(cur.wind_gusts_10m)}<span style="font-size:10px;opacity:.7;margin-left:2px">${this.windUnit}</span></div>
-        </div></div></div>`)
-
-    // Feels like
-    const feels = this.t(cur.apparent_temperature), temp = this.t(cur.temperature_2m)
-    const diff = feels - temp
-    const fnote = diff === 0 ? "Similar to the actual temperature." : diff < 0 ? `Wind makes it feel ${Math.abs(diff)}° cooler.` : `Humidity makes it feel ${diff}° warmer.`
-    C.push(`<div class="card">
-      ${this.cardHeader(`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 3v11a3 3 0 1 0 4 0V3a2 2 0 0 0-4 0z"/><circle cx="12" cy="17" r="2" fill="currentColor"/></svg>`, "Feels Like")}
-      <div class="mini-big">${feels}°</div><div class="card-sub">${fnote}</div></div>`)
-
-    // Humidity
-    C.push(`<div class="card">
-      ${this.cardHeader(`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3c4 5 6 8 6 11a6 6 0 1 1-12 0c0-3 2-6 6-11z"/></svg>`, "Humidity")}
-      <div class="mini-big">${cur.relative_humidity_2m}%</div>
-      <div class="card-sub">The dew point is ${this.t(cur.dew_point_2m)}° right now.</div></div>`)
-
-    // Visibility
-    const vis = (cur.visibility / 1000).toFixed(1)
-    const vnote = vis > 10 ? "Perfectly clear view." : vis > 5 ? "Slight haze in the distance." : "Reduced by fog or precipitation."
-    C.push(`<div class="card">
-      ${this.cardHeader(`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>`, "Visibility")}
-      <div class="mini-big">${vis} <span style="font-size:18px;opacity:.7">km</span></div>
-      <div class="card-sub">${vnote}</div></div>`)
-
-    // Pressure gauge
-    const pv = Math.round(cur.pressure_msl)
-    const ppct = Math.max(0, Math.min(1, (pv - 980) / 60))
-    const pang = -90 + ppct * 180
-    C.push(`<div class="card">
-      ${this.cardHeader(`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 12l4-4"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg>`, "Pressure")}
-      <div style="display:flex;align-items:center;gap:10px">
-        <svg viewBox="0 0 100 60" style="width:90px">
-          <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2" stroke-linecap="round"/>
-          <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="${125.6 * ppct} 300"/>
-          <g transform="translate(50 50) rotate(${pang})"><line x1="0" y1="0" x2="0" y2="-34" stroke="#fff" stroke-width="2" stroke-linecap="round"/></g>
-          <circle cx="50" cy="50" r="2" fill="#fff"/></svg>
-        <div><div style="font-size:22px;font-weight:300">${pv}<span style="font-size:12px;opacity:.7;margin-left:3px">hPa</span></div></div>
-      </div></div>`)
-
-    // AQI
-    if (aqi != null) {
-      const cat = aqi < 50 ? "Good" : aqi < 100 ? "Moderate" : aqi < 150 ? "Unhealthy (SG)" : aqi < 200 ? "Unhealthy" : "Hazardous"
-      const anote = aqi < 50 ? "Air quality is ideal for outdoor activity." : aqi < 100 ? "Acceptable for most people." : "Sensitive groups should reduce exertion."
-      C.push(`<div class="card">
-        ${this.cardHeader(`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 8c2-2 6-2 8 0s6 2 8 0M4 14c2-2 6-2 8 0s6 2 8 0"/></svg>`, "Air Quality")}
-        <div class="card-val">${aqi} <span class="unit">${cat}</span></div>
-        <div class="aqi-scale"><div class="aqi-thumb" style="left:${Math.min(aqi / 300, 1) * 100}%"></div></div>
-        <div class="card-sub" style="margin-top:8px">${anote}</div></div>`)
-    }
-
-    // Precipitation today
-    C.push(`<div class="card">
-      ${this.cardHeader(`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3c4 5 6 8 6 11a6 6 0 1 1-12 0c0-3 2-6 6-11z"/></svg>`, "Precipitation")}
-      <div class="card-val">${(day.precipitation_sum[0] ?? 0).toFixed(1)}<span class="unit">mm</span></div>
-      <div class="card-sub" style="margin-top:4px">${day.precipitation_probability_max?.[0] ?? 0}% chance today</div></div>`)
-
-    this.cardsTarget.innerHTML = C.join("")
   }
 
   // ============ sky + FX (ported from apple-app.jsx) ============
@@ -543,13 +397,5 @@ export default class extends Controller {
     }
     flash()
     this._thunderInterval = setInterval(flash, 5000)
-  }
-
-  // ============ errors ============
-  showError(msg) {
-    this.errorMsgTarget.textContent = msg
-    this.errorAlertTarget.style.display = "block"
-    clearTimeout(this.errTimeout)
-    this.errTimeout = setTimeout(() => { this.errorAlertTarget.style.display = "none" }, 4000)
   }
 }

@@ -1,0 +1,40 @@
+<% aqi = weather.aqi&.round %>
+<% if aqi %>
+  <div class="detail-hero">
+    <div class="detail-hero-val"><%= aqi %><span class="level"><%= aqi_label(aqi) %></span></div>
+    <div class="detail-hero-sub">
+      <%= aqi < 50 ? "Air quality is ideal for outdoor activity." : aqi < 100 ? "Acceptable for most people; unusually sensitive individuals should consider reducing prolonged outdoor exertion." : "Sensitive groups should reduce prolonged outdoor exertion." %>
+    </div>
+  </div>
+
+  <div class="detail-section">
+    <div class="detail-section-hd">AQI SCALE</div>
+    <div class="detail-scale" style="background:linear-gradient(90deg, #6ecf6c 0%, #f2d84a 33%, #f59537 50%, #e74c3c 67%, #9b59b6 100%)">
+      <div class="detail-scale-thumb" style="left:<%= [aqi / 300.0, 1].min * 100 %>%"></div>
+    </div>
+    <div class="detail-scale-labels"><span>Good</span><span>Mod.</span><span>U.SG</span><span>Unhealthy</span><span>Hazardous</span></div>
+  </div>
+
+  <% if weather.pollutants %>
+    <div class="detail-section">
+      <div class="detail-section-hd">POLLUTANTS</div>
+      <div class="detail-list">
+        <div class="row"><span class="k">PM2.5</span><span class="v"><%= wx_round(weather.pollutants["pm2_5"]) %> µg/m³</span></div>
+        <div class="row"><span class="k">PM10</span><span class="v"><%= wx_round(weather.pollutants["pm10"]) %> µg/m³</span></div>
+        <div class="row"><span class="k">Ozone (O₃)</span><span class="v"><%= wx_round(weather.pollutants["ozone"]) %> µg/m³</span></div>
+        <div class="row"><span class="k">Nitrogen Dioxide</span><span class="v"><%= wx_round(weather.pollutants["nitrogen_dioxide"]) %> µg/m³</span></div>
+        <div class="row"><span class="k">Sulphur Dioxide</span><span class="v"><%= wx_round(weather.pollutants["sulphur_dioxide"]) %> µg/m³</span></div>
+        <div class="row"><span class="k">Carbon Monoxide</span><span class="v"><%= wx_round(weather.pollutants["carbon_monoxide"]) %> µg/m³</span></div>
+      </div>
+    </div>
+  <% end %>
+
+  <div class="detail-section">
+    <div class="detail-section-hd">ABOUT AQI</div>
+    <div class="detail-prose">
+      <p>The US AQI combines ground-level ozone, particulates, and other pollutants into a single 0–500 scale. Values above 100 can affect sensitive groups; above 150 can affect everyone.</p>
+    </div>
+  </div>
+<% else %>
+  <div class="detail-hero"><div class="detail-hero-sub">Air quality data isn't available for this location right now.</div></div>
+<% end %>

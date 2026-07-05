@@ -1,0 +1,32 @@
+<%
+  feels = wx_round(weather.current["apparent_temperature"])
+  temp = wx_round(weather.current["temperature_2m"])
+  diff = wx_round(weather.current["apparent_temperature"] - weather.current["temperature_2m"])
+%>
+<div class="detail-hero">
+  <div class="detail-hero-val"><%= feels %>°</div>
+  <div class="detail-hero-sub">
+    <%= diff.zero? ? "Feels the same as the actual temperature of #{temp}°." : diff.negative? ? "Wind is making it feel #{diff.abs}° cooler than the actual temperature of #{temp}°." : "Humidity is making it feel #{diff}° warmer than the actual temperature of #{temp}°." %>
+  </div>
+</div>
+
+<div class="detail-section">
+  <div class="detail-section-hd">APPARENT VS ACTUAL (24H)</div>
+  <div>
+    <%= dual_line_chart_svg(hourly_window(weather, "apparent_temperature"), hourly_window(weather, "temperature_2m"), color_a: "#ffb467") %>
+    <div class="axis"><span>Now</span><span>+12h</span><span>+24h</span></div>
+    <div style="display:flex;gap:14px;margin-top:10px;font-size:12px;color:rgba(255,255,255,0.7)">
+      <span style="display:flex;align-items:center;gap:6px"><span style="width:16px;height:2px;background:#ffb467;display:inline-block"></span>Feels</span>
+      <span style="display:flex;align-items:center;gap:6px"><span style="width:16px;height:2px;background:rgba(255,255,255,0.4);display:inline-block"></span>Actual</span>
+    </div>
+  </div>
+</div>
+
+<div class="detail-section">
+  <div class="detail-section-hd">FACTORS</div>
+  <div class="detail-list">
+    <div class="row"><span class="k">Actual temperature</span><span class="v"><%= temp %>°</span></div>
+    <div class="row"><span class="k">Apparent temperature</span><span class="v"><%= feels %>°</span></div>
+    <div class="row"><span class="k">Wind chill</span><span class="v"><%= diff.negative? ? "#{diff}°" : "—" %></span></div>
+  </div>
+</div>

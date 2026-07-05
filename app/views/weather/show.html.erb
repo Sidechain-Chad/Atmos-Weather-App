@@ -1,0 +1,34 @@
+<div class="app" data-controller="weather" data-weather-root-url-value="<%= root_path %>">
+  <%= render "sky_layers" %>
+
+  <audio data-weather-target="ambientAudio" loop preload="none"></audio>
+  <audio data-weather-target="weatherAudio" loop preload="none"></audio>
+
+  <% if @weather %>
+    <div data-weather-target="conditionData" hidden
+         data-condition="<%= @weather.condition.kind %>"
+         data-local-hour="<%= @weather.current["time"].to_s[11, 2].to_i %>"
+         data-windy="<%= @weather.current["wind_speed_10m"].to_f > (@units == "imperial" ? 16 : 25) %>"></div>
+  <% end %>
+
+  <div class="detail">
+    <div class="detail-nav">
+      <%= link_to root_path, class: "detail-back", data: { turbo: false } do %>
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Weather
+      <% end %>
+      <div class="detail-title">
+        <%= metric_title(@metric) %>
+      </div>
+      <% if @weather %><div class="detail-city"><%= @weather.name %></div><% end %>
+    </div>
+
+    <% if @error %>
+      <div class="atmos-alert" role="alert"><span><%= @error %></span></div>
+    <% end %>
+
+    <% if @weather %>
+      <%= render "weather/details/#{@metric.tr("-", "_")}", weather: @weather, units: @units, climate_average: @climate_average, annual_climate: @annual_climate %>
+    <% end %>
+  </div>
+</div>

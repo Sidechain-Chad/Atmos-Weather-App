@@ -1,0 +1,49 @@
+<%
+  sunrise = weather.daily["sunrise"][0].to_s[11, 5]
+  sunset = weather.daily["sunset"][0].to_s[11, 5]
+  local_hour = weather.current["time"].to_s[11, 2].to_i
+  sr_h, sr_m = sunrise.split(":").map(&:to_i)
+  ss_h, ss_m = sunset.split(":").map(&:to_i)
+  sr_total = sr_h * 60 + sr_m
+  ss_total = ss_h * 60 + ss_m
+  daylight_minutes = ss_total - sr_total
+  solar_noon_total = (sr_total + ss_total) / 2
+  fmt = ->(total) { format("%02d:%02d", (total / 60) % 24, total % 60) }
+  # Civil/astronomical twilight need the sun's real elevation angle for this
+  # lat/lon/date; we don't compute that, so these are widely-used average
+  # offsets from sunrise/sunset rather than a precise calculation.
+  civil_am = fmt.call(sr_total - 30)
+  civil_pm = fmt.call(ss_total + 30)
+  astro_pm = fmt.call(ss_total + 90)
+%>
+<div class="detail-hero">
+  <div class="detail-hero-val"><%= sunset %></div>
+  <div class="detail-hero-sub">Sunrise at <%= sunrise %> · <%= daylight_minutes / 60 %>h <%= daylight_minutes % 60 %>m of daylight today.</div>
+</div>
+
+<div class="detail-section">
+  <div class="detail-section-hd">TODAY'S PATH</div>
+  <%= sunset_arc_svg(sunrise, sunset, local_hour) %>
+</div>
+
+<div class="detail-section">
+  <div class="detail-section-hd">DAYLIGHT</div>
+  <div class="detail-stats">
+    <div class="detail-stat"><div class="lbl">Sunrise</div><div class="val"><%= sunrise %></div><div class="sub">Begins civil twilight</div></div>
+    <div class="detail-stat"><div class="lbl">Sunset</div><div class="val"><%= sunset %></div><div class="sub">Ends civil twilight</div></div>
+    <div class="detail-stat"><div class="lbl">Daylight</div><div class="val"><%= daylight_minutes / 60 %>h <%= daylight_minutes % 60 %>m</div><div class="sub">Today</div></div>
+    <div class="detail-stat"><div class="lbl">Solar Noon</div><div class="val"><%= fmt.call(solar_noon_total) %></div><div class="sub">Sun at zenith</div></div>
+  </div>
+</div>
+
+<div class="detail-section">
+  <div class="detail-section-hd">TWILIGHT PHASES (APPROX.)</div>
+  <div class="detail-list">
+    <div class="row"><span class="k">Civil Twilight (morning)</span><span class="v"><%= civil_am %></span></div>
+    <div class="row"><span class="k">Sunrise</span><span class="v"><%= sunrise %></span></div>
+    <div class="row"><span class="k">Solar Noon</span><span class="v"><%= fmt.call(solar_noon_total) %></span></div>
+    <div class="row"><span class="k">Sunset</span><span class="v"><%= sunset %></span></div>
+    <div class="row"><span class="k">Civil Twilight (evening)</span><span class="v"><%= civil_pm %></span></div>
+    <div class="row"><span class="k">Astronomical Night</span><span class="v"><%= astro_pm %></span></div>
+  </div>
+</div>

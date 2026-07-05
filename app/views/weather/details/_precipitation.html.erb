@@ -1,0 +1,41 @@
+<%
+  precip_unit = units == "imperial" ? "in" : "mm"
+  total24 = format("%.1f", weather.daily["precipitation_sum"]&.[](0) || 0)
+  pop = hourly_window(weather, "precipitation_probability")
+  amounts = hourly_window(weather, "precipitation")
+  pop_times = hourly_window(weather, "time")
+  peak_pop = pop.compact.max || 0
+  peak_pop_idx = pop.index(peak_pop)
+  peak_pop_time = (peak_pop_idx && (t = pop_times[peak_pop_idx])) ? t.to_s[11, 5] : "—"
+  precip_type = weather.condition.kind.to_s.include?("snow") ? "Snow" : "Rain"
+%>
+<div class="detail-hero">
+  <div class="detail-hero-val"><%= total24 %><span class="unit-lg"><%= precip_unit %></span></div>
+  <div class="detail-hero-sub"><%= weather.daily["precipitation_probability_max"]&.[](0) || 0 %>% chance of precipitation today.</div>
+</div>
+
+<div class="detail-section">
+  <div class="detail-section-hd">CHANCE OF RAIN, NEXT 24 HOURS</div>
+  <div>
+    <%= bar_chart_svg(pop, color: "#5aa0e0") %>
+    <div class="axis"><span>Now</span><span>+12h</span><span>+24h</span></div>
+  </div>
+</div>
+
+<div class="detail-section">
+  <div class="detail-section-hd">AMOUNT (<%= precip_unit.upcase %> PER HOUR)</div>
+  <div>
+    <%= bar_chart_svg(amounts.map { |v| v || 0 }, color: "#74b9ff") %>
+    <div class="axis"><span>Now</span><span>+12h</span><span>+24h</span></div>
+  </div>
+</div>
+
+<div class="detail-section">
+  <div class="detail-section-hd">SUMMARY</div>
+  <div class="detail-stats">
+    <div class="detail-stat"><div class="lbl">Next hour</div><div class="val"><%= pop[0] || 0 %>%</div><div class="sub">Chance</div></div>
+    <div class="detail-stat"><div class="lbl">Peak today</div><div class="val"><%= peak_pop %>%</div><div class="sub">at <%= peak_pop_time %></div></div>
+    <div class="detail-stat"><div class="lbl">Total rainfall</div><div class="val"><%= total24 %> <%= precip_unit %></div><div class="sub">Next 24h</div></div>
+    <div class="detail-stat"><div class="lbl">Type</div><div class="val"><%= precip_type %></div><div class="sub">Expected</div></div>
+  </div>
+</div>
