@@ -49,7 +49,7 @@ class WeatherService
   end
 
   def call
-    weather = HttpJson.get(FORECAST_URL, forecast_params)
+    weather = fetch_forecast
     air = fetch_air_quality
     current_time = weather.dig("current", "time")
 
@@ -66,9 +66,20 @@ class WeatherService
 
   private
 
+  # Cached briefly and keyed by rounded coords so repeat page loads and the
+  # per-saved-location fetches on "/" don't re-hit Open-Meteo and trip its
+  # rate limit (see ClimateAverageService for the same pattern).
+  def fetch_forecast
+    cache_key = "weather_forecast/#{@lat.round(2)}/#{@lon.round(2)}/#{@units}"
+    Rails.cache.fetch(cache_key, expires_in: 10.minutes) { HttpJson.get(FORECAST_URL, forecast_params) }
+  end
+
   def fetch_air_quality
     fields = ["us_aqi"] + POLLEN_FIELDS + POLLUTANT_FIELDS
-    HttpJson.get(AQI_URL, latitude: @lat, longitude: @lon, current: fields.join(","))
+    cache_key = "air_quality/#{@lat.round(2)}/#{@lon.round(2)}"
+    Rails.cache.fetch(cache_key, expires_in: 10.minutes) do
+      HttpJson.get(AQI_URL, latitude: @lat, longitude: @lon, current: fields.join(","))
+    end
   rescue WeatherApiError
     nil
   end
