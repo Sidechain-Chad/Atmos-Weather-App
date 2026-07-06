@@ -68,10 +68,19 @@ class WeatherService
 
   # Cached briefly and keyed by rounded coords so repeat page loads and the
   # per-saved-location fetches on "/" don't re-hit Open-Meteo and trip its
-  # rate limit (see ClimateAverageService for the same pattern).
+  # rate limit (see ClimateAverageService for the same pattern). Also keeps a
+  # longer-lived "stale" copy of the last successful response so that if
+  # Open-Meteo rejects a live fetch (e.g. Render's shared outbound IP getting
+  # rate-limited by traffic from other apps), the page still shows real,
+  # if slightly old, weather instead of an error banner.
   def fetch_forecast
     cache_key = "weather_forecast/#{@lat.round(2)}/#{@lon.round(2)}/#{@units}"
-    Rails.cache.fetch(cache_key, expires_in: 10.minutes) { HttpJson.get(FORECAST_URL, forecast_params) }
+    stale_key = "#{cache_key}/stale"
+    data = Rails.cache.fetch(cache_key, expires_in: 10.minutes) { HttpJson.get(FORECAST_URL, forecast_params) }
+    Rails.cache.write(stale_key, data, expires_in: 6.hours)
+    data
+  rescue WeatherApiError
+    Rails.cache.read(stale_key) || raise
   end
 
   def fetch_air_quality
