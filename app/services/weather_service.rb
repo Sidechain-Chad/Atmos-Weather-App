@@ -52,6 +52,12 @@ class WeatherService
     weather = fetch_forecast
     air = fetch_air_quality
     current_time = weather.dig("current", "time")
+    current_date =
+      begin
+        current_time ? Date.parse(current_time) : Date.current
+      rescue ArgumentError, TypeError
+        Date.current
+      end
 
     Result.new(
       name: @name, country: @country, latitude: @lat, longitude: @lon, units: @units,
@@ -60,7 +66,7 @@ class WeatherService
       aqi: air&.dig("current", "us_aqi"),
       pollutants: extract_fields(air, POLLUTANT_FIELDS),
       pollen: extract_fields(air, POLLEN_FIELDS),
-      moon: MoonService.calculate(current_time ? Date.parse(current_time) : Date.current)
+      moon: MoonService.calculate(current_date)
     )
   end
 

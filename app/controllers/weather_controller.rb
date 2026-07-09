@@ -61,6 +61,8 @@ class WeatherController < ApplicationController
   def load_climate_average
     date = Date.parse(@weather.current["time"])
     ClimateAverageService.fetch(@weather.latitude, @weather.longitude, date, units: @units)
+  rescue ArgumentError, TypeError
+    nil
   end
 
   def load_annual_climate
@@ -82,8 +84,15 @@ class WeatherController < ApplicationController
   end
 
   # ---------- My Locations (cookie-backed, no DB/auth in this app) ----------
+  # The cookie is client-controlled, so treat its contents as untrusted: drop
+  # any non-Hash entries and cap the list length before it's ever used, not
+  # just on write, so a hand-crafted cookie can't force load_saved_locations
+  # to spawn unbounded threads/API calls or blow up on a non-hash entry.
   def saved_locations
-    JSON.parse(cookies[:atmos_locations].presence || "[]")
+    list = JSON.parse(cookies[:atmos_locations].presence || "[]")
+    return [] unless list.is_a?(Array)
+
+    list.select { |l| l.is_a?(Hash) }.first(MAX_SAVED_LOCATIONS)
   rescue JSON::ParserError
     []
   end

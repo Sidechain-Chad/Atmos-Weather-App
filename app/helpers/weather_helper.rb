@@ -84,15 +84,27 @@ module WeatherHelper
     %w[N NE E SE S SW W NW][(((deg % 360) + 22.5) / 45).to_i % 8]
   end
 
+  BEAUFORT_SCALE = [
+    [1, "0 Calm"],
+    [6, "1 Light Air"],
+    [12, "2 Light Breeze"],
+    [20, "3 Gentle Breeze"],
+    [29, "4 Moderate Breeze"],
+    [39, "5 Fresh Breeze"],
+    [50, "6 Strong Breeze"],
+    [62, "7 Near Gale"],
+    [75, "8 Gale"],
+    [89, "9 Strong Gale"],
+    [103, "10 Storm"],
+    [118, "11 Violent Storm"]
+  ].freeze
+
   def beaufort_label(speed, units)
     return "—" if speed.nil?
 
     kmh = units == "imperial" ? speed * 1.60934 : speed
-    return "3 Gentle" if kmh < 12
-    return "4 Moderate" if kmh < 20
-    return "5 Fresh" if kmh < 29
-
-    "6 Strong"
+    _, label = BEAUFORT_SCALE.find { |threshold, _| kmh < threshold }
+    label || "12 Hurricane"
   end
 
   def pressure_trend_label(values)

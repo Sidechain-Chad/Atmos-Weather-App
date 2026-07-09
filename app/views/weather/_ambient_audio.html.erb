@@ -1,0 +1,7 @@
+<%# Persisted across Turbo Drive visits via data-turbo-permanent, so
+    navigating between index and a detail page (or back) never pauses or
+    restarts playback: Turbo transplants these exact elements into the new
+    page instead of recreating them, as long as every page renders this
+    partial with the same ids. %>
+<audio id="ambient-audio" data-weather-target="ambientAudio" data-turbo-permanent loop preload="none"></audio>
+<audio id="weather-audio" data-weather-target="weatherAudio" data-turbo-permanent loop preload="none"></audio>

@@ -27,6 +27,10 @@ const RAIN_KINDS = ["rain", "drizzle", "thunder", "sleet"]
 const SNOW_KINDS = ["snow", "hail"]
 const SOUND_FADE_MS = 2000
 const MUTE_STORAGE_KEY = "atmos.muted"
+const GEO_UPGRADE_SESSION_KEY = "atmos.geoUpgradeAttempted"
+const GEO_DENIED_SESSION_KEY = "atmos.geoDenied"
+const GEO_HIDDEN_AT_KEY = "atmos.hiddenAt"
+const GEO_RESUME_THRESHOLD_MS = 15 * 60 * 1000 // ~15 min away counts as "returning to the app", like Apple Weather
 const UNMUTED_ICON = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13" opacity="0.6"/></svg>`
 const MUTED_ICON = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H3v6h3l5 4V5z"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>`
 
@@ -49,25 +53,98 @@ export default class extends Controller {
   ]
   static values = { rootUrl: String }
 
+  // Runs on every connect, including a reconnect after a Turbo Drive visit
+  // to/from a detail page — the ambientAudio/weatherAudio targets are
+  // data-turbo-permanent, so this is very likely the *same* already-playing
+  // <audio> elements from the previous page, not fresh ones. Nothing here
+  // may pause, reset currentTime, or recreate them; initSound() and
+  // dashboardLoaded() only read current state (localStorage + element/DOM
+  // state) and resync the (non-permanent) UI to match.
   connect() {
     this.selectedIndex = -1
     this.initStars()
     this.initSound()
     this.dashboardLoaded()
 
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        p => this.navigate({ lat: p.coords.latitude, lon: p.coords.longitude }),
-        () => { /* keep the city already loaded */ },
-        { timeout: 8000, maximumAge: 600000 }
-      )
+    // "App launch" geolocation attempt — once per browser session (not once
+    // per connect), so every reconnect, e.g. navigating back from a detail
+    // page, doesn't re-fetch the dashboard frame and re-flash the spinner
+    // even though the location hasn't changed. Manual search and the units
+    // toggle call navigate() directly and are unaffected by this gate. The
+    // GEO_UPGRADE_SESSION_KEY flag itself is only consumed inside
+    // attemptGeolocationUpgrade(), once its guards confirm an attempt can
+    // actually fire — see the comment there for why.
+    if (!sessionStorage.getItem(GEO_UPGRADE_SESSION_KEY)) {
+      this.attemptGeolocationUpgrade(true)
     }
+
+    // Mirrors Apple Weather: also re-geolocate on returning to the app after
+    // being away for a while — bound once per connect so disconnect() can
+    // remove this exact listener; otherwise every Turbo reconnect would
+    // stack another document-level listener.
+    this._onVisibilityChange = () => this.handleVisibilityChange()
+    document.addEventListener("visibilitychange", this._onVisibilityChange)
   }
 
+  // Only cancels this controller instance's own timers (thunder flashes,
+  // in-flight volume fades) so they don't keep ticking against a detached
+  // page after a Turbo visit navigates away. Deliberately does not touch
+  // .pause()/.src/.currentTime on the audio elements themselves — they're
+  // data-turbo-permanent and keep playing (or stay put) across the visit.
   disconnect() {
     if (this._thunderInterval) clearInterval(this._thunderInterval)
     if (this.hasAmbientAudioTarget) clearInterval(this.ambientAudioTarget._fadeInterval)
     if (this.hasWeatherAudioTarget) clearInterval(this.weatherAudioTarget._fadeInterval)
+    if (this._onVisibilityChange) document.removeEventListener("visibilitychange", this._onVisibilityChange)
+  }
+
+  // Fires on every visibility flip, on whichever page happens to be open.
+  // Going hidden just records when; coming back visible only re-geolocates
+  // if that gap was long enough to count as "returning to the app" rather
+  // than a quick tab-switch. The marker is cleared either way once resume is
+  // evaluated, so a detail-page resume (attemptGeolocationUpgrade no-ops via
+  // its hasDashboardTarget guard) doesn't linger and fire later.
+  handleVisibilityChange() {
+    if (document.hidden) {
+      sessionStorage.setItem(GEO_HIDDEN_AT_KEY, String(Date.now()))
+      return
+    }
+
+    const hiddenAt = Number(sessionStorage.getItem(GEO_HIDDEN_AT_KEY))
+    if (!hiddenAt) return
+    sessionStorage.removeItem(GEO_HIDDEN_AT_KEY)
+    if (Date.now() - hiddenAt < GEO_RESUME_THRESHOLD_MS) return
+
+    this.attemptGeolocationUpgrade(false)
+  }
+
+  // Shared by the once-per-session launch attempt above and the
+  // visibility-resume attempt: only makes sense on the index page (it
+  // navigates the dashboard turbo-frame) — detail pages have no such frame,
+  // so this.navigate() would throw a missing-target error on success. Skips
+  // silently if an earlier attempt this session was denied, so it doesn't
+  // re-prompt the user on every resume.
+  //
+  // consumeSessionFlag is true only from the launch call site: it marks
+  // GEO_UPGRADE_SESSION_KEY only once an attempt has actually cleared every
+  // guard below, not just because connect() ran. Marking it any earlier (e.g.
+  // in connect() itself) would burn the one-per-session attempt on a no-op
+  // when a session's first page is a detail page (bookmark/shared link) —
+  // the index would then never geolocate for the rest of that session.
+  // Resumes pass false: a resume's own gating (hidden-at timestamp cleared
+  // in handleVisibilityChange) is independent of whether the launch attempt
+  // ever got to fire, so it must never set or depend on this flag.
+  attemptGeolocationUpgrade(consumeSessionFlag) {
+    if (!this.hasDashboardTarget || !navigator.geolocation) return
+    if (sessionStorage.getItem(GEO_DENIED_SESSION_KEY)) return
+
+    if (consumeSessionFlag) sessionStorage.setItem(GEO_UPGRADE_SESSION_KEY, "1")
+
+    navigator.geolocation.getCurrentPosition(
+      p => this.navigate({ lat: p.coords.latitude, lon: p.coords.longitude }),
+      e => { if (e.code === e.PERMISSION_DENIED) sessionStorage.setItem(GEO_DENIED_SESSION_KEY, "1") },
+      { timeout: 8000, maximumAge: 600000 }
+    )
   }
 
   // ============ navigation (reloads the weather_dashboard turbo-frame) ============
@@ -84,14 +161,30 @@ export default class extends Controller {
 
   // Detail pages share this controller for sky/FX only and have no search bar,
   // so the spinner target won't exist there — guard instead of throwing.
-  showSpinner() {
+  showSpinner(event) {
     if (!this.hasSpinnerTarget) return
+    if (this.isPrefetchOrForeignFetch(event)) return
+
     this.spinnerTarget.style.display = "block"
     if (this.hasSearchIconTarget) this.searchIconTarget.style.display = "none"
     if (this.hasCityInputTarget) {
       this._placeholder = this.cityInputTarget.placeholder
       this.cityInputTarget.placeholder = ""
     }
+  }
+
+  // turbo:before-fetch-request is bound to the dashboard frame, but it
+  // bubbles from wherever the fetch actually originated — including Turbo
+  // 8's hover-prefetch on the card/hero links nested inside that frame,
+  // which never fires turbo:frame-load and would leave the spinner stuck on.
+  // Bail out unless this is a real navigation of the dashboard frame itself:
+  // prefetch requests carry Turbo's own X-Sec-Purpose: prefetch header, and
+  // any request whose target isn't the frame element came from some other
+  // link's fetch, not this frame loading.
+  isPrefetchOrForeignFetch(event) {
+    if (event?.detail?.fetchOptions?.headers?.["X-Sec-Purpose"] === "prefetch") return true
+
+    return this.hasDashboardTarget && event?.target !== this.dashboardTarget
   }
 
   hideSpinner() {
@@ -101,8 +194,12 @@ export default class extends Controller {
     if (this.hasCityInputTarget && this._placeholder !== undefined) this.cityInputTarget.placeholder = this._placeholder
   }
 
-  // Runs after every dashboard load: initial page render AND every subsequent
-  // turbo-frame navigation (unit toggle, city select, geolocation upgrade).
+  // Runs after every dashboard load: initial page render, every subsequent
+  // turbo-frame navigation (unit toggle, city select, geolocation upgrade),
+  // and every Turbo Drive connect (navigating to/from a detail page). Reads
+  // conditionData fresh from the current page's DOM each time, so overlays/
+  // palette/sound all re-derive correctly after a Drive visit's body swap —
+  // nothing here is cached from a previous connect.
   dashboardLoaded() {
     this.hideSpinner()
     if (!this.hasConditionDataTarget) return
@@ -136,6 +233,21 @@ export default class extends Controller {
   initSound() {
     this.muted = localStorage.getItem(MUTE_STORAGE_KEY) !== "0"
     this.updateSoundToggleUI()
+    this.resumeAudioIfNeeded()
+  }
+
+  // On a reconnect (e.g. after Turbo Drive swaps in a detail page), the
+  // ambientAudio/weatherAudio targets are the same persisted elements from
+  // before the visit — if they're already playing, this is a no-op. It only
+  // nudges playback if unmuted audio ended up paused for a reason other than
+  // our own toggleSound() (e.g. the browser suspended it while backgrounded).
+  // Never touches currentTime/volume/src, so it can't cause a restart.
+  resumeAudioIfNeeded() {
+    if (this.muted || !this.hasAmbientAudioTarget) return
+
+    ;[this.ambientAudioTarget, this.weatherAudioTarget].forEach(el => {
+      if (el.dataset.src && el.paused) el.play().catch(() => {})
+    })
   }
 
   toggleSound() {
@@ -192,7 +304,10 @@ export default class extends Controller {
 
   // Keeps el.src pointed at the right track always (even while muted, so
   // unmuting has something to play immediately) but only actually plays/fades
-  // audibly when unmuted.
+  // audibly when unmuted. The dataset.src bail-out below also covers
+  // navigation between pages with the same condition: since el persists
+  // across Turbo visits, a reconnect that recomputes the same track src is a
+  // no-op here, so the track keeps playing rather than restarting from zero.
   switchTrack(el, src, targetVolume) {
     if (el.dataset.src === src) return
     el.dataset.src = src

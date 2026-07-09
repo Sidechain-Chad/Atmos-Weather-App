@@ -3,8 +3,7 @@
 <div class="app" data-controller="weather" data-weather-root-url-value="<%= root_path %>">
   <%= render "sky_layers" %>
 
-  <audio data-weather-target="ambientAudio" loop preload="none"></audio>
-  <audio data-weather-target="weatherAudio" loop preload="none"></audio>
+  <%= render "ambient_audio" %>
 
   <div class="topbar">
     <div class="brand">

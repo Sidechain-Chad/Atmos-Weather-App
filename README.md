@@ -14,13 +14,17 @@ What it does
 
 How it's built
 
-- HTML, CSS, JS: No heavy frameworks, just standard web tech.
-- Stimulus: Used for the Javascript logic.
+- Ruby on Rails 7.1: Server-rendered app, no database — everything is fetched live or cached in memory.
+- Stimulus + importmap: Just enough Javascript for the interactive bits, no bundler/Node build step.
 - Open-Meteo API: Where the weather data comes from (no API key needed!).
 - BigDataCloud API: Used to figure out the city name from coordinates.
+- Puma: The app server, deployed on Render via the included Dockerfile.
 
 How to run it
 
-1. Clone the repo or download the files.
-2. Open `index.html` in your browser.
-3. That's it.
+1. Clone the repo.
+2. Install the Ruby version in `.ruby-version` (currently 3.3.5).
+3. Run `bundle install`.
+4. Run `bin/rails server` and visit `http://localhost:3000`.
+
+Alternatively, build and run it with Docker: `docker build -t atmos-weather . && docker run -p 3000:3000 atmos-weather`.
