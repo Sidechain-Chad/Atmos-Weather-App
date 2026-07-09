@@ -4,18 +4,26 @@ require "minitest/mock"
 class WeatherControllerTest < ActionDispatch::IntegrationTest
   test "should get index" do
     WeatherService.stub :fetch_by_city, fake_weather do
-      get root_url
-      assert_response :success
+      ClimateAverageService.stub :fetch, fake_climate_average do
+        get root_url
+        assert_response :success
+      end
     end
   end
 
   test "should get each metric detail page" do
     WeatherService.stub :fetch_by_city, fake_weather do
-      get root_url # establishes the atmos_lat/lon cookies show relies on
-      %w[uv sunset wind feels-like humidity visibility pressure air-quality precipitation moon pollen].each do |metric|
+      ClimateAverageService.stub :fetch, fake_climate_average do
+        get root_url # establishes the atmos_lat/lon cookies show relies on
+      end
+      %w[uv sunset wind feels-like humidity visibility pressure air-quality precipitation moon pollen averages].each do |metric|
         WeatherService.stub :fetch_by_coords, fake_weather do
-          get weather_metric_url(metric)
-          assert_response :success, "expected #{metric} to render"
+          ClimateAverageService.stub :fetch, fake_climate_average do
+            ClimateAverageService.stub :fetch_annual, fake_annual_climate do
+              get weather_metric_url(metric)
+              assert_response :success, "expected #{metric} to render"
+            end
+          end
         end
       end
     end
@@ -23,23 +31,53 @@ class WeatherControllerTest < ActionDispatch::IntegrationTest
 
   test "can save and remove a location" do
     WeatherService.stub :fetch_by_city, fake_weather do
-      get root_url
-      assert_no_match(/Saved/, @response.body)
+      WeatherService.stub :fetch_by_coords, fake_weather do
+        ClimateAverageService.stub :fetch, fake_climate_average do
+          get root_url
+          assert_no_match(/Saved/, @response.body)
 
-      post weather_locations_url, params: { name: "Cape Town", country: "ZA", lat: -33.9, lon: 18.4 }
-      assert_redirected_to root_url
-      follow_redirect!
-      assert_match(/Saved/, @response.body)
-      assert_match(/MY LOCATIONS/, @response.body)
+          post weather_locations_url, params: { name: "Cape Town", country: "ZA", lat: -33.9, lon: 18.4 }
+          assert_redirected_to root_url
+          follow_redirect!
+          assert_match(/Saved/, @response.body)
+          assert_match(/MY LOCATIONS/, @response.body)
 
-      delete "/weather/locations", params: { name: "Cape Town", lat: -33.9, lon: 18.4 }
-      assert_redirected_to root_url
-      follow_redirect!
-      assert_no_match(/MY LOCATIONS/, @response.body)
+          delete "/weather/locations", params: { name: "Cape Town", lat: -33.9, lon: 18.4 }
+          assert_redirected_to root_url
+          follow_redirect!
+          assert_no_match(/MY LOCATIONS/, @response.body)
+        end
+      end
     end
   end
 
+  test "renders with a malformed/oversized saved-locations cookie" do
+    valid_entries = (1..12).map { |i| { "name" => "City#{i}", "country" => "ZA", "lat" => i.to_f, "lon" => i.to_f } }
+    oversized = [1, "not a hash", nil, true] + valid_entries
+    fetched = []
+
+    WeatherService.stub :fetch_by_city, fake_weather do
+      WeatherService.stub :fetch_by_coords, ->(lat, lon, **) { fetched << [lat, lon]; fake_weather } do
+        ClimateAverageService.stub :fetch, fake_climate_average do
+          cookies[:atmos_locations] = oversized.to_json
+          get root_url
+          assert_response :success
+        end
+      end
+    end
+
+    assert_operator fetched.size, :<=, WeatherController::MAX_SAVED_LOCATIONS
+  end
+
   private
+
+  def fake_climate_average
+    ClimateAverageService::Result.new(avg_high: 22.0, avg_low: 12.0, years: 10)
+  end
+
+  def fake_annual_climate
+    (1..12).map { |m| { month: m, avg_high: 20.0 + m, avg_low: 10.0 + m } }
+  end
 
   def fake_weather
     WeatherService::Result.new(

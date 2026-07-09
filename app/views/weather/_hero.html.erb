@@ -5,7 +5,7 @@
   <div class="hero-cond"><%= weather.condition.label %></div>
   <div class="hero-hilo">H:<%= wx_round(weather.daily["temperature_2m_max"][0]) %>°&nbsp;&nbsp;L:<%= wx_round(weather.daily["temperature_2m_min"][0]) %>°</div>
   <% if (alert = hero_alert_text(weather)) %>
-    <%= link_to weather_metric_path("precipitation"), class: "alert", data: { turbo: false } do %>
+    <%= link_to weather_metric_path("precipitation"), class: "alert", data: { turbo_frame: "_top" } do %>
       <span class="dot"></span><span><%= alert %></span><span class="arrow">›</span>
     <% end %>
   <% end %>
