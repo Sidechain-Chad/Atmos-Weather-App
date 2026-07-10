@@ -31,6 +31,7 @@ const GEO_UPGRADE_SESSION_KEY = "atmos.geoUpgradeAttempted"
 const GEO_DENIED_SESSION_KEY = "atmos.geoDenied"
 const GEO_HIDDEN_AT_KEY = "atmos.hiddenAt"
 const GEO_RESUME_THRESHOLD_MS = 15 * 60 * 1000 // ~15 min away counts as "returning to the app", like Apple Weather
+const DASHBOARD_RETRY_DELAY_MS = 5000 // cold Render boots take ~30-60s; this just catches the tail end
 const UNMUTED_ICON = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13" opacity="0.6"/></svg>`
 const MUTED_ICON = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H3v6h3l5 4V5z"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>`
 
@@ -84,6 +85,20 @@ export default class extends Controller {
     // stack another document-level listener.
     this._onVisibilityChange = () => this.handleVisibilityChange()
     document.addEventListener("visibilitychange", this._onVisibilityChange)
+
+    // A cold-booting Render instance (or an offline PWA) can answer the
+    // dashboard frame's own reload with either a frame-less error page (a 502
+    // page has no matching turbo-frame, so Turbo treats it as "missing") or an
+    // outright failed fetch (turbo:fetch-request-error). Left unhandled,
+    // either one leaves the spinner stuck forever — turbo:frame-load (which
+    // dashboardLoaded/hideSpinner hang off) only fires on a successful
+    // render. Bound directly to the frame element (not document) since both
+    // events' target is always the frame whose own navigation failed.
+    if (this.hasDashboardTarget) {
+      this._onDashboardFrameFailure = e => this.handleDashboardFrameFailure(e)
+      this.dashboardTarget.addEventListener("turbo:frame-missing", this._onDashboardFrameFailure)
+      this.dashboardTarget.addEventListener("turbo:fetch-request-error", this._onDashboardFrameFailure)
+    }
   }
 
   // Only cancels this controller instance's own timers (thunder flashes,
@@ -96,6 +111,11 @@ export default class extends Controller {
     if (this.hasAmbientAudioTarget) clearInterval(this.ambientAudioTarget._fadeInterval)
     if (this.hasWeatherAudioTarget) clearInterval(this.weatherAudioTarget._fadeInterval)
     if (this._onVisibilityChange) document.removeEventListener("visibilitychange", this._onVisibilityChange)
+    if (this.hasDashboardTarget && this._onDashboardFrameFailure) {
+      this.dashboardTarget.removeEventListener("turbo:frame-missing", this._onDashboardFrameFailure)
+      this.dashboardTarget.removeEventListener("turbo:fetch-request-error", this._onDashboardFrameFailure)
+    }
+    clearTimeout(this._retryTimeout)
   }
 
   // Fires on every visibility flip, on whichever page happens to be open.
@@ -148,10 +168,16 @@ export default class extends Controller {
   }
 
   // ============ navigation (reloads the weather_dashboard turbo-frame) ============
+  // A real, user/geo-driven navigation gets its own fresh one-shot retry
+  // budget (_retryScheduled reset here) — only retryDashboard()'s own
+  // re-assignment of the same src is exempt, so a failure loop can't rearm
+  // itself every time the auto-retry fires.
   navigate(params) {
     const url = new URL(this.rootUrlValue, window.location.origin)
     Object.entries(params).forEach(([k, v]) => { if (v !== undefined && v !== null && v !== "") url.searchParams.set(k, v) })
-    this.dashboardTarget.src = url.pathname + url.search
+    this._retryScheduled = false
+    this._lastDashboardSrc = url.pathname + url.search
+    this.dashboardTarget.src = this._lastDashboardSrc
   }
 
   navigateToLocation(e) {
@@ -194,6 +220,55 @@ export default class extends Controller {
     if (this.hasCityInputTarget && this._placeholder !== undefined) this.cityInputTarget.placeholder = this._placeholder
   }
 
+  // Fires for turbo:frame-missing (a frame-less error page, e.g. Render's 502
+  // during a cold boot) and turbo:fetch-request-error (the fetch itself
+  // rejected, e.g. offline PWA). Neither case gets a turbo:frame-load, so
+  // without this the spinner would stay stuck and — for frame-missing only —
+  // Turbo would also swap the frame's content for its "Content missing"
+  // placeholder. preventDefault() suppresses that swap; the frame's last
+  // successfully rendered content is left exactly as-is either way.
+  handleDashboardFrameFailure(event) {
+    event.preventDefault()
+    this.hideSpinner()
+
+    const autoRetrying = !this._retryScheduled
+    this.showDashboardRetryBanner(autoRetrying)
+
+    if (autoRetrying) {
+      this._retryScheduled = true
+      this._retryTimeout = setTimeout(() => this.retryDashboard(), DASHBOARD_RETRY_DELAY_MS)
+    }
+  }
+
+  // Reuses the server-rendered .atmos-alert error styling. The element is
+  // created once and left in the frame (prepended, ahead of the hero/cards
+  // content) — a later failure just updates its text, and a later *success*
+  // wipes it for free since Turbo replaces the whole frame body on a normal
+  // render. Tappable throughout so a cold boot that outlasts the one
+  // auto-retry can still be retried manually.
+  showDashboardRetryBanner(autoRetrying) {
+    if (!this.hasDashboardTarget) return
+    let banner = this._retryBannerEl
+    if (!banner || !this.dashboardTarget.contains(banner)) {
+      banner = document.createElement("div")
+      banner.className = "atmos-alert atmos-alert--retry"
+      banner.setAttribute("role", "alert")
+      banner.innerHTML = "<span></span>"
+      banner.addEventListener("click", () => this.retryDashboard())
+      this.dashboardTarget.prepend(banner)
+      this._retryBannerEl = banner
+    }
+    banner.querySelector("span").textContent = autoRetrying
+      ? "Couldn't refresh weather — retrying…"
+      : "Couldn't refresh weather — tap to retry"
+  }
+
+  retryDashboard() {
+    clearTimeout(this._retryTimeout)
+    if (!this.hasDashboardTarget || !this._lastDashboardSrc) return
+    this.dashboardTarget.src = this._lastDashboardSrc
+  }
+
   // Runs after every dashboard load: initial page render, every subsequent
   // turbo-frame navigation (unit toggle, city select, geolocation upgrade),
   // and every Turbo Drive connect (navigating to/from a detail page). Reads
@@ -202,6 +277,12 @@ export default class extends Controller {
   // nothing here is cached from a previous connect.
   dashboardLoaded() {
     this.hideSpinner()
+    // Only reachable via a successful turbo:frame-load, which means Turbo
+    // just replaced the frame body wholesale — any retry banner is already
+    // gone with it, and the one-shot retry budget is free again.
+    clearTimeout(this._retryTimeout)
+    this._retryScheduled = false
+    this._retryBannerEl = null
     if (!this.hasConditionDataTarget) return
 
     const kind = this.conditionDataTarget.dataset.condition

@@ -1163,6 +1163,7 @@ turbo-frame { display: contents; }
 .units-toggle .u-btn { border:none; background:transparent; color:var(--fg-55,rgba(255,255,255,0.6)); font:inherit; font-size:13px; padding:4px 10px; border-radius:8px; cursor:pointer; transition:background .2s,color .2s; }
 .units-toggle .u-btn.active { background:rgba(255,255,255,0.9); color:#1a1a2a; font-weight:600; }
 .atmos-alert { margin:10px 0; padding:10px 14px; border-radius:12px; background:rgba(200,40,40,0.85); color:#fff; font-size:13px; text-align:center; backdrop-filter:blur(8px); }
+.atmos-alert--retry { cursor:pointer; }
 .atmos-footer { text-align:center; margin:30px 0 12px; font-size:11px; letter-spacing:0.05em; color:var(--fg-40,rgba(255,255,255,0.4)); }
 .loader {
   width:16px; height:16px; border:2px solid rgba(255,255,255,0.3); border-top-color:#fff; border-radius:50%; animation:atmos-spin .7s linear infinite;
