@@ -1,8 +1,9 @@
 <%
   humidity = weather.current["relative_humidity_2m"]
   comfort = humidity < 40 ? "Dry" : humidity < 60 ? "Comfortable" : humidity < 75 ? "Humid" : "Very Humid"
-  # Magnus-Tetens: saturation vapor pressure from temperature, scaled by RH —
-  # real atmospheric physics from fields we already fetch, not a guess.
+  # Magnus-Tetens computes saturation vapor pressure from temperature, scaled
+  # by RH. This is real atmospheric physics from fields we already fetch, not
+  # a guess.
   temp = weather.current["temperature_2m"]
   saturation_vapor_pressure = 6.1094 * Math.exp((17.625 * temp) / (temp + 243.04))
   vapor_pressure = (saturation_vapor_pressure * humidity / 100.0).round(1)
@@ -34,6 +35,6 @@
   <div class="detail-section-hd">ABOUT HUMIDITY</div>
   <div class="detail-prose">
     <p>Relative humidity is the amount of water vapor in the air as a percentage of what the air can hold at the current temperature.</p>
-    <p>The dew point is the temperature air must cool to for water to condense — a more direct measure of how muggy it feels than relative humidity.</p>
+    <p>The dew point is the temperature air must cool to for water to condense, a more direct measure of how muggy it feels than relative humidity.</p>
   </div>
 </div>

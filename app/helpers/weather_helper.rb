@@ -361,8 +361,8 @@ module WeatherHelper
   end
 
   # Waxing moons draw the sunlit side on the right (a simplification that
-  # holds for northern-hemisphere observers; waning moons mirror it to the
-  # left, since the real picture mirrors south of the equator, which this
+  # holds for northern-hemisphere observers, while waning moons mirror it to
+  # the left, since the real picture mirrors south of the equator, which this
   # doesn't attempt to correct for).
   def moon_icon_svg(illumination, waxing, size = 88)
     f = illumination.to_f.clamp(0, 100) / 100.0

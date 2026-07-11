@@ -2,8 +2,8 @@
 # calendar day over the past 10 years, via Open-Meteo's archive API. Caches
 # the result for a week since a 10-year normal barely moves day to day.
 #
-# Fetches run in small concurrent batches rather than all 10 at once: firing
-# 10 simultaneous requests reliably trips Open-Meteo's "too many concurrent
+# Fetches run in small concurrent batches rather than all 10 at once, because
+# firing 10 simultaneous requests reliably trips Open-Meteo's "too many concurrent
 # requests" 429 on this endpoint, silently losing years. A batched sequential
 # pass, plus a single retry for anything that still failed, gets all 10
 # without hammering the API.
@@ -69,7 +69,7 @@ module ClimateAverageService
     (values.sum / values.size.to_f).round(1)
   end
 
-  # Monthly normals for the "Annual Temperature" chart: one archive request
+  # Monthly normals for the "Annual Temperature" chart use one archive request
   # per year (each covering all 12 months) rather than fetching per-day
   # averages 12 times over, which would multiply the request count for no
   # real accuracy gain at this chart's scale.

@@ -3,7 +3,7 @@
   <div class="detail-hero">
     <div class="detail-hero-val"><%= aqi %><span class="level"><%= aqi_label(aqi) %></span></div>
     <div class="detail-hero-sub">
-      <%= aqi < 50 ? "Air quality is ideal for outdoor activity." : aqi < 100 ? "Acceptable for most people; unusually sensitive individuals should consider reducing prolonged outdoor exertion." : "Sensitive groups should reduce prolonged outdoor exertion." %>
+      <%= aqi < 50 ? "Air quality is ideal for outdoor activity." : aqi < 100 ? "Acceptable for most people. Unusually sensitive individuals should consider reducing prolonged outdoor exertion." : "Sensitive groups should reduce prolonged outdoor exertion." %>
     </div>
   </div>
 
@@ -32,7 +32,7 @@
   <div class="detail-section">
     <div class="detail-section-hd">ABOUT AQI</div>
     <div class="detail-prose">
-      <p>The US AQI combines ground-level ozone, particulates, and other pollutants into a single 0–500 scale. Values above 100 can affect sensitive groups; above 150 can affect everyone.</p>
+      <p>The US AQI combines ground-level ozone, particulates, and other pollutants into a single 0–500 scale. Values above 100 can affect sensitive groups. Values above 150 can affect everyone.</p>
     </div>
   </div>
 <% else %>

@@ -1,5 +1,5 @@
 /* ============================================================
-   ATMOS — compiled from atmos.scss
+   ATMOS, compiled from atmos.scss
    ============================================================ */
 
 :root {
@@ -481,7 +481,7 @@ body {
   color: #ffffff;
   text-decoration: none;
 }
-/* Cards are <a> tags (metric detail links) — pin color/decoration across every
+/* Cards are <a> tags (metric detail links). Pin color/decoration across every
    link state so the browser's visited-link color can't leak through into
    children (.card-val, .mini-big) that don't set their own color. */
 .card:link, .card:visited, .card:hover, .card:active { color: #ffffff; text-decoration: none; }
@@ -1167,7 +1167,7 @@ turbo-frame { display: contents; }
 .atmos-footer { text-align:center; margin:30px 0 12px; font-size:11px; letter-spacing:0.05em; color:var(--fg-40,rgba(255,255,255,0.4)); }
 .loader {
   width:16px; height:16px; border:2px solid rgba(255,255,255,0.3); border-top-color:#fff; border-radius:50%; animation:atmos-spin .7s linear infinite;
-  /* Centered via margin, not transform: translateY — the spin keyframes
+  /* Centered via margin, not transform: translateY. The spin keyframes
      already own `transform`, and animating between translateY and rotate
      on the same property makes the browser interpolate translate->rotate,
      which looks like a bounce/swoop instead of a clean spin. */

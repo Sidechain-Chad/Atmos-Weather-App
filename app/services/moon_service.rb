@@ -1,9 +1,9 @@
 # Pure-Ruby moon phase + illumination, no API call. Based on the days elapsed
-# since a known new moon and the mean synodic month length — accurate to
+# since a known new moon and the mean synodic month length, accurate to
 # within roughly an hour, which is plenty for a phase name and illumination %.
 #
-# Deliberately does NOT compute moonrise/moonset: real rise/set times need the
-# moon's topocentric position (right ascension/declination) for the observer's
+# Deliberately does NOT compute moonrise/moonset, since real rise/set times
+# need the moon's topocentric position (right ascension/declination) for the observer's
 # lat/lon, which this simple age-based model can't produce accurately. Rather
 # than show plausible-looking but wrong times, that field is left nil.
 module MoonService

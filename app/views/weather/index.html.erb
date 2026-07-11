@@ -1,4 +1,4 @@
-<%# Atmos — weather is fetched server-side (WeatherService); Stimulus only drives sky/FX animation. %>
+<%# Atmos fetches weather server-side (WeatherService). Stimulus only drives sky/FX animation. %>
 
 <div class="app" data-controller="weather" data-weather-root-url-value="<%= root_path %>">
   <%= render "sky_layers" %>

@@ -1,10 +1,10 @@
 import { Controller } from "@hotwired/stimulus"
 
 // Mouse "grab to scroll" for horizontal strips (the hourly forecast), with
-// iOS-style elastic resistance at the edges and momentum/inertia on release —
-// the same rubber-band curve UIScrollView uses. Touch and trackpad input are
-// left completely alone; they already get the browser's own native momentum
-// scrolling (and, on Safari, its own native bounce) for free.
+// iOS-style elastic resistance at the edges and momentum/inertia on release,
+// using the same rubber-band curve UIScrollView uses. Touch and trackpad
+// input are left completely alone. They already get the browser's own native
+// momentum scrolling (and, on Safari, its own native bounce) for free.
 export default class extends Controller {
   connect() {
     this.element.classList.add("drag-scroll")
@@ -27,7 +27,7 @@ export default class extends Controller {
     this.moved = false
     // setPointerCapture (below) retargets every later event for this pointerId
     // to `this.element`, so e.target inside onUp is the container, not
-    // whatever was actually pressed — remember the real target now.
+    // whatever was actually pressed. Remember the real target now.
     this.downTarget = e.target
     this.virtual = this.element.scrollLeft
     this.lastX = e.clientX
@@ -81,7 +81,7 @@ export default class extends Controller {
     return Math.max(0, this.element.scrollWidth - this.element.clientWidth)
   }
 
-  // Beyond the edge, native scrollLeft just clamps — so we keep it pinned at
+  // Beyond the edge, native scrollLeft just clamps, so we keep it pinned at
   // the boundary and fake the elastic overshoot with a transform instead.
   applyVirtual(value) {
     const max = this.maxScroll()
@@ -97,8 +97,9 @@ export default class extends Controller {
     }
   }
 
-  // UIScrollView's rubber-band curve: resistance grows with distance dragged,
-  // asymptotically approaching clientWidth/constant so it never runs away.
+  // UIScrollView's rubber-band curve, meaning resistance grows with distance
+  // dragged, asymptotically approaching clientWidth/constant so it never runs
+  // away.
   resist(overshoot, constant = 0.55) {
     const dimension = this.element.clientWidth
     return (overshoot * dimension * constant) / (dimension + constant * overshoot)
