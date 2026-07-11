@@ -84,7 +84,7 @@ class WeatherController < ApplicationController
   end
 
   # ---------- My Locations (cookie-backed, no DB/auth in this app) ----------
-  # The cookie is client-controlled, so treat its contents as untrusted: drop
+  # The cookie is client-controlled, so treat its contents as untrusted. Drop
   # any non-Hash entries and cap the list length before it's ever used, not
   # just on write, so a hand-crafted cookie can't force load_saved_locations
   # to spawn unbounded threads/API calls or blow up on a non-hash entry.

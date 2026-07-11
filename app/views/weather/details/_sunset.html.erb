@@ -10,7 +10,7 @@
   solar_noon_total = (sr_total + ss_total) / 2
   fmt = ->(total) { format("%02d:%02d", (total / 60) % 24, total % 60) }
   # Civil/astronomical twilight need the sun's real elevation angle for this
-  # lat/lon/date; we don't compute that, so these are widely-used average
+  # lat/lon/date. We don't compute that, so these are widely-used average
   # offsets from sunrise/sunset rather than a precise calculation.
   civil_am = fmt.call(sr_total - 30)
   civil_pm = fmt.call(ss_total + 30)

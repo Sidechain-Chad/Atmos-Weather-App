@@ -65,7 +65,7 @@ Rails.application.configure do
   # 6-hour stale-fallback copy (see WeatherService), so it needs to actually
   # retain entries in production, not just fall back to the default file
   # store. This app runs as a single Render instance, so an in-process
-  # memory store is fine; the tradeoff is that the cache (and any stale
+  # memory store is fine. The tradeoff is that the cache (and any stale
   # fallback data) is lost on every restart/deploy. If this ever scales to
   # multiple instances, switch to a shared store like Redis or solid_cache.
   config.cache_store = :memory_store

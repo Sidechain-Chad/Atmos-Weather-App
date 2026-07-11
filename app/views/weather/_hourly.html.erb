@@ -9,7 +9,7 @@
     <%
       times = weather.hourly["time"]
       # The hourly array only has entries on the hour, but current.time usually
-      # falls mid-hour — so "Now" is the current hour's slot with its temp/condition
+      # falls mid-hour, so "Now" is the current hour's slot with its temp/condition
       # overridden by the live `current` reading, not the next hourly boundary.
       floor_idx = times.rindex { |t| t <= weather.current["time"] } || 0
       (0...12).each do |i|
